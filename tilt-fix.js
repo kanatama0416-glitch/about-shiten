@@ -7,10 +7,12 @@
   let orientationBase=null;
   let gravityBase=null;
   let sensorSeen=false;
+  let orientationSeen=false;
+  let motionSeen=false;
 
   const clamp=v=>Math.max(-1,Math.min(1,v));
   const running=()=>document.body.classList.contains('game-running');
-  const emit=s=>window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:s}));
+  const report=s=>window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:s}));
 
   function angle(){
     if(screen.orientation&&Number.isFinite(screen.orientation.angle))return ((screen.orientation.angle%360)+360)%360;
@@ -36,29 +38,26 @@
     return Number.isFinite(x)?x:null;
   }
 
-  function markSensor(){
-    if(sensorSeen)return;
+  function markSensor(kind){
     sensorSeen=true;
-    emit('ok');
+    if(kind==='orientation')orientationSeen=true;
+    if(kind==='motion')motionSeen=true;
+    if(running())report('ok:'+kind);
   }
 
   function onOrientation(e){
     const side=horizontalOrientation(e);
     if(side===null)return;
-    markSensor();
+    markSensor('orientation');
     if(orientationBase===null){orientationBase=side;return;}
     if(!running())return;
-    emitSteer((side-orientationBase)/10);
-  }
-
-  function emitSteer(v){
-    window.dispatchEvent(new CustomEvent('shiten-steer',{detail:clamp(v)}));
+    window.dispatchEvent(new CustomEvent('shiten-steer',{detail:clamp((side-orientationBase)/10)}));
   }
 
   function onMotion(e){
     const linear=horizontalAxis(e.acceleration);
     if(Number.isFinite(linear)){
-      markSensor();
+      markSensor('motion');
       if(running()&&Math.abs(linear)>.12){
         window.dispatchEvent(new CustomEvent('shiten-nudge',{detail:clamp(linear/2.4)}));
       }
@@ -66,7 +65,7 @@
     }
     const raw=horizontalAxis(e.accelerationIncludingGravity);
     if(!Number.isFinite(raw))return;
-    markSensor();
+    markSensor('motion');
     if(gravityBase===null){gravityBase=raw;return;}
     const delta=raw-gravityBase;
     gravityBase=gravityBase*.92+raw*.08;
@@ -78,56 +77,46 @@
   window.addEventListener('deviceorientation',onOrientation,{passive:true});
   window.addEventListener('devicemotion',onMotion,{passive:true});
 
-  async function requestSensors(){
-    if(permissionAsked){
-      emit(permissionState);
-      return;
-    }
+  function requestSensors(){
+    if(permissionAsked)return;
     permissionAsked=true;
-    permissionState='requesting';
-    emit('requesting');
+    const hasMotion=typeof DeviceMotionEvent!=='undefined';
+    const hasOrientation=typeof DeviceOrientationEvent!=='undefined';
+    if(!hasMotion&&!hasOrientation){permissionState='unsupported';report('unsupported');return;}
+
     try{
-      const calls=[];
-      if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
-        calls.push(DeviceMotionEvent.requestPermission());
-      }
-      if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
-        calls.push(DeviceOrientationEvent.requestPermission());
-      }
-      if(calls.length){
-        const settled=await Promise.allSettled(calls);
-        const values=settled.filter(r=>r.status==='fulfilled').map(r=>r.value);
-        const anyGranted=values.includes('granted');
-        const allDenied=values.length>0&&values.every(v=>v!=='granted');
-        permissionState=anyGranted?'granted':allDenied?'denied':'error';
-        emit(permissionState);
-        if(!anyGranted)permissionAsked=false;
-      }else{
-        const hasAPI=('DeviceMotionEvent'in window)||('DeviceOrientationEvent'in window);
-        permissionState=hasAPI?'not-required':'unavailable';
-        emit(permissionState);
-      }
-    }catch(_){
-      permissionAsked=false;
-      permissionState='error';
-      emit('error');
-    }
+      const promises=[];
+      if(hasMotion&&typeof DeviceMotionEvent.requestPermission==='function')promises.push(DeviceMotionEvent.requestPermission());
+      if(hasOrientation&&typeof DeviceOrientationEvent.requestPermission==='function')promises.push(DeviceOrientationEvent.requestPermission());
+      if(!promises.length){permissionState='not-required';report('not-required');return;}
+      Promise.allSettled(promises).then(results=>{
+        const vals=results.map(r=>r.status==='fulfilled'?r.value:'error');
+        if(vals.some(v=>v==='granted')){permissionState='granted';report('granted');}
+        else if(vals.some(v=>v==='denied')){permissionState='denied';report('denied');}
+        else{permissionState='error';report('error');permissionAsked=false;}
+      });
+    }catch(_){permissionState='error';report('error');permissionAsked=false;}
   }
 
-  // iOS の permission API はユーザー操作中に呼ぶ。
-  eye.addEventListener('pointerdown',requestSensors,{capture:true});
+  /*
+    重要: permission API を pointerdown で呼ぶと iOS の許可UIがドラッグを
+    pointercancel して「ぽろん」ジェスチャー自体を壊すことがある。
+    そのため、ドラッグが完了した pointerup で初めて許可を要求する。
+    pointerup もユーザー操作イベントなので、その同期スタック内で API を呼ぶ。
+  */
+  eye.addEventListener('pointerup',requestSensors,{capture:true});
 
   window.addEventListener('shiten-game-start',()=>{
     orientationBase=null;
     gravityBase=null;
     sensorSeen=false;
-    // pointerdown で得た許可結果を、game.js が受け取れるタイミングでもう一度通知する。
-    emit(permissionState==='unknown'?'waiting':permissionState);
-    // 許可済みなのにイベントが一度も来ない場合は、アプリ内WebView等でセンサー配信が止められている可能性を明示。
+    orientationSeen=false;
+    motionSeen=false;
+    report('waiting:'+permissionState);
     setTimeout(()=>{
-      if(!running()||sensorSeen)return;
-      if(permissionState==='granted')emit('granted-no-events');
-      else if(permissionState==='not-required')emit('no-events');
+      if(!running())return;
+      if(sensorSeen)report('ok:'+(orientationSeen&&motionSeen?'both':orientationSeen?'orientation':'motion'));
+      else report('no-events:'+permissionState);
     },900);
   });
 })();
