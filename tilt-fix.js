@@ -7,6 +7,7 @@
   let orientationBase=null;
   let gravityBase=null;
   let sensorSeen=false;
+  let gameActive=false;
 
   const clamp=v=>Math.max(-1,Math.min(1,v));
   const running=()=>document.body.classList.contains('game-running');
@@ -69,19 +70,21 @@
   window.addEventListener('deviceorientation',onOrientation,{passive:true});
   window.addEventListener('devicemotion',onMotion,{passive:true});
 
-  function requestSensors(){
-    if(permissionAsked)return;
+  function requestSensors(force=false){
+    if(permissionAsked&&!force)return;
     permissionAsked=true;
     const hasMotion=typeof DeviceMotionEvent!=='undefined';
     const hasOrientation=typeof DeviceOrientationEvent!=='undefined';
     if(!hasMotion&&!hasOrientation){permissionState='unavailable';report('unavailable');return;}
 
     try{
-      const promises=[];
-      if(hasMotion&&typeof DeviceMotionEvent.requestPermission==='function')promises.push(DeviceMotionEvent.requestPermission());
-      if(hasOrientation&&typeof DeviceOrientationEvent.requestPermission==='function')promises.push(DeviceOrientationEvent.requestPermission());
-      if(!promises.length){permissionState='not-required';report('not-required');return;}
-      Promise.allSettled(promises).then(results=>{
+      const requests=[];
+      /* iOSでは1回のユーザー操作内で、必要な許可要求を待たずに同時発火する。 */
+      if(hasMotion&&typeof DeviceMotionEvent.requestPermission==='function')requests.push(DeviceMotionEvent.requestPermission());
+      if(hasOrientation&&typeof DeviceOrientationEvent.requestPermission==='function')requests.push(DeviceOrientationEvent.requestPermission());
+      if(!requests.length){permissionState='not-required';report('not-required');return;}
+      report('requesting');
+      Promise.allSettled(requests).then(results=>{
         const vals=results.map(r=>r.status==='fulfilled'?r.value:'error');
         if(vals.some(v=>v==='granted')){permissionState='granted';report('granted');}
         else if(vals.some(v=>v==='denied')){permissionState='denied';report('denied');}
@@ -90,10 +93,18 @@
     }catch(_){permissionState='error';report('error');permissionAsked=false;}
   }
 
-  /* iOSの許可UIでドラッグが中断されないよう、許可要求はpointerdownではなくpointerupで行う。 */
-  eye.addEventListener('pointerup',requestSensors,{capture:true});
+  /* ぽろんを邪魔しないよう、最初の許可要求は指を離した瞬間に行う。 */
+  eye.addEventListener('pointerup',()=>requestSensors(false),{capture:false});
+
+  /* iOSで最初の要求が通らなかった場合、ゲーム中の次のタップを明示的な再要求に使う。 */
+  window.addEventListener('pointerdown',()=>{
+    if(!running()||sensorSeen)return;
+    if(permissionState==='unknown'||permissionState==='error'||permissionState==='not-required')requestSensors(true);
+    else if(permissionState==='denied')report('denied');
+  },{passive:true});
 
   window.addEventListener('shiten-game-start',()=>{
+    gameActive=true;
     orientationBase=null;
     gravityBase=null;
     sensorSeen=false;
@@ -102,8 +113,10 @@
       if(!running())return;
       if(sensorSeen)report('ok');
       else if(permissionState==='granted')report('granted-no-events');
+      else if(permissionState==='denied')report('denied');
       else if(permissionState==='unavailable')report('unavailable');
+      else if(permissionState==='error')report('error');
       else report('no-events');
-    },900);
+    },1100);
   });
 })();
