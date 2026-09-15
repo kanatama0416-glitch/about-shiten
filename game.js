@@ -52,3 +52,15 @@ function startDropGame(){if(gameRunning)return;gameRunning=true;gameStartTime=pe
 function frame(now){if(!gameRunning)return;const dt=Math.min(.025,Math.max(.006,(now-last)/1000));last=now;if(steer){const dx=steerX-ballX;ballVX+=Math.max(-1550,Math.min(1550,dx*11))*dt}else if(key)ballVX+=key*1450*dt;ballVY+=980*dt;ballVX*=Math.pow(.982,dt*60);ballVY=Math.min(ballVY,760);ballX+=ballVX*dt;ballY+=ballVY*dt;const left=ballR+5,right=Math.min(document.documentElement.clientWidth,720)-ballR-5;if(ballX<left){ballX=left;ballVX=Math.abs(ballVX)*.58}else if(ballX>right){ballX=right;ballVX=-Math.abs(ballVX)*.58}checkCheckpoints();for(const o of obstacles){if(o.b<ballY-ballR-70||o.t>ballY+ballR+70)continue;collide(o)}const g=goalHit();if(g){finish(g.gx,g.gy);return}if(ballY+ballR>=floorY){ballY=floorY-ballR;ballVY=-Math.max(520,Math.abs(ballVY)*.78);ballVX*=.92}if(now>manualScrollUntil){const desired=Math.max(0,Math.min(document.documentElement.scrollHeight-innerHeight,ballY-innerHeight*.58));window.scrollTo(0,scrollY+(desired-scrollY)*Math.min(1,dt*7))}ball.style.transform=`translate3d(${ballX-scrollX-ballR}px,${ballY-scrollY-ballR}px,0)`;requestAnimationFrame(frame)}
 function finish(gx,gy){const elapsed=Math.max(0,(performance.now()-gameStartTime)/1000);gameRunning=false;steer=false;key=0;hint.classList.remove('show');goal.classList.add('goal-ready');ball.style.transition='transform .32s cubic-bezier(.2,.9,.3,1),opacity .22s ease .18s';ball.style.transform=`translate3d(${gx-scrollX-ballR}px,${gy-scrollY-ballR}px,0)`;result.innerHTML=`<small>GOAL / CLEAR TIME</small><strong>${elapsed.toFixed(2)}<span>SEC</span></strong><em>ゴール！</em>`;clearTimeout(result.t);setTimeout(()=>result.classList.add('show'),300);result.t=setTimeout(()=>result.classList.remove('show'),4300);setTimeout(()=>{ball.style.opacity='0';document.body.classList.remove('game-running');goalPupil.style.opacity='1';setTimeout(()=>{ball.classList.remove('on','dropped','size-pop');ball.style.transition='';ball.style.opacity='1';pupil.style.opacity='';goal.classList.remove('goal-ready');checkpoints.forEach(cp=>cp.el.classList.remove('game-eye-hit'))},260)},340)}
 })();
+
+(()=>{
+const main=document.querySelector('main');
+if(!main||document.querySelector('.test-page-notice'))return;
+const s=document.createElement('style');
+s.textContent='.test-page-notice{margin:0 auto;width:min(100%,720px);padding:10px 16px;background:#111;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;font-size:11px;line-height:1.55;letter-spacing:.02em}.test-page-notice b{display:inline-block;margin-right:8px;color:#ffd83d;font:900 9px/1 Arial,sans-serif;letter-spacing:.14em}.test-page-notice span{font-weight:700}';
+document.head.appendChild(s);
+const n=document.createElement('div');
+n.className='test-page-notice';
+n.innerHTML='<b>TEST PAGE</b><span>こちらはテストページです。掲載している文言・内容は仮で作成していますので、ご放念ください。</span>';
+main.parentNode.insertBefore(n,main);
+})();
