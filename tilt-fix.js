@@ -7,8 +7,6 @@
   let orientationBase=null;
   let gravityBase=null;
   let sensorSeen=false;
-  let orientationSeen=false;
-  let motionSeen=false;
 
   const clamp=v=>Math.max(-1,Math.min(1,v));
   const running=()=>document.body.classList.contains('game-running');
@@ -38,17 +36,15 @@
     return Number.isFinite(x)?x:null;
   }
 
-  function markSensor(kind){
+  function markSensor(){
     sensorSeen=true;
-    if(kind==='orientation')orientationSeen=true;
-    if(kind==='motion')motionSeen=true;
-    if(running())report('ok:'+kind);
+    if(running())report('ok');
   }
 
   function onOrientation(e){
     const side=horizontalOrientation(e);
     if(side===null)return;
-    markSensor('orientation');
+    markSensor();
     if(orientationBase===null){orientationBase=side;return;}
     if(!running())return;
     window.dispatchEvent(new CustomEvent('shiten-steer',{detail:clamp((side-orientationBase)/10)}));
@@ -57,21 +53,17 @@
   function onMotion(e){
     const linear=horizontalAxis(e.acceleration);
     if(Number.isFinite(linear)){
-      markSensor('motion');
-      if(running()&&Math.abs(linear)>.12){
-        window.dispatchEvent(new CustomEvent('shiten-nudge',{detail:clamp(linear/2.4)}));
-      }
+      markSensor();
+      if(running()&&Math.abs(linear)>.12)window.dispatchEvent(new CustomEvent('shiten-nudge',{detail:clamp(linear/2.4)}));
       return;
     }
     const raw=horizontalAxis(e.accelerationIncludingGravity);
     if(!Number.isFinite(raw))return;
-    markSensor('motion');
+    markSensor();
     if(gravityBase===null){gravityBase=raw;return;}
     const delta=raw-gravityBase;
     gravityBase=gravityBase*.92+raw*.08;
-    if(running()&&Math.abs(delta)>.15){
-      window.dispatchEvent(new CustomEvent('shiten-nudge',{detail:clamp(delta/2.0)}));
-    }
+    if(running()&&Math.abs(delta)>.15)window.dispatchEvent(new CustomEvent('shiten-nudge',{detail:clamp(delta/2.0)}));
   }
 
   window.addEventListener('deviceorientation',onOrientation,{passive:true});
@@ -82,7 +74,7 @@
     permissionAsked=true;
     const hasMotion=typeof DeviceMotionEvent!=='undefined';
     const hasOrientation=typeof DeviceOrientationEvent!=='undefined';
-    if(!hasMotion&&!hasOrientation){permissionState='unsupported';report('unsupported');return;}
+    if(!hasMotion&&!hasOrientation){permissionState='unavailable';report('unavailable');return;}
 
     try{
       const promises=[];
@@ -98,25 +90,20 @@
     }catch(_){permissionState='error';report('error');permissionAsked=false;}
   }
 
-  /*
-    重要: permission API を pointerdown で呼ぶと iOS の許可UIがドラッグを
-    pointercancel して「ぽろん」ジェスチャー自体を壊すことがある。
-    そのため、ドラッグが完了した pointerup で初めて許可を要求する。
-    pointerup もユーザー操作イベントなので、その同期スタック内で API を呼ぶ。
-  */
+  /* iOSの許可UIでドラッグが中断されないよう、許可要求はpointerdownではなくpointerupで行う。 */
   eye.addEventListener('pointerup',requestSensors,{capture:true});
 
   window.addEventListener('shiten-game-start',()=>{
     orientationBase=null;
     gravityBase=null;
     sensorSeen=false;
-    orientationSeen=false;
-    motionSeen=false;
-    report('waiting:'+permissionState);
+    report('waiting');
     setTimeout(()=>{
       if(!running())return;
-      if(sensorSeen)report('ok:'+(orientationSeen&&motionSeen?'both':orientationSeen?'orientation':'motion'));
-      else report('no-events:'+permissionState);
+      if(sensorSeen)report('ok');
+      else if(permissionState==='granted')report('granted-no-events');
+      else if(permissionState==='unavailable')report('unavailable');
+      else report('no-events');
     },900);
   });
 })();
