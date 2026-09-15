@@ -55,12 +55,11 @@ function finish(gx,gy){const elapsed=Math.max(0,(performance.now()-gameStartTime
 
 (()=>{
 const main=document.querySelector('main');
-if(!main||document.querySelector('.test-page-notice'))return;
+if(!main)return;
 const s=document.createElement('style');
-s.textContent='.test-page-notice{margin:0 auto;width:min(100%,720px);padding:10px 16px;background:#111;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;font-size:11px;line-height:1.55;letter-spacing:.02em}.test-page-notice b{display:inline-block;margin-right:8px;color:#ffd83d;font:900 9px/1 Arial,sans-serif;letter-spacing:.14em}.test-page-notice span{font-weight:700}';
+s.textContent='.test-page-notice{margin:0 auto;width:min(100%,720px);padding:18px 18px 17px;background:#ffd83d;color:#0b0b0b;border-top:5px solid #0b0b0b;border-bottom:5px solid #0b0b0b;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;line-height:1.55;position:relative;z-index:12000}.test-page-notice b{display:block;font:950 24px/1 Arial,sans-serif;letter-spacing:.06em;margin-bottom:9px}.test-page-notice span{display:block;font-size:14px;font-weight:850}.test-page-notice:before{content:"!";position:absolute;right:16px;top:10px;width:34px;height:34px;border:3px solid #0b0b0b;border-radius:50%;display:grid;place-items:center;font:950 23px/1 Arial,sans-serif}';
 document.head.appendChild(s);
-const n=document.createElement('div');
-n.className='test-page-notice';
-n.innerHTML='<b>TEST PAGE</b><span>こちらはテストページです。掲載している文言・内容は仮で作成していますので、ご放念ください。</span>';
-main.parentNode.insertBefore(n,main);
+let n=document.querySelector('.test-page-notice');
+if(!n){n=document.createElement('div');n.className='test-page-notice';main.parentNode.insertBefore(n,main)}
+n.innerHTML='<b>TEST PAGE</b><span>こちらはテストページです。<br>掲載している文言・内容は仮で作成していますので、ご放念ください。</span>';
 })();
