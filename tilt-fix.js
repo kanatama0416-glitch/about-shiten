@@ -3,12 +3,14 @@
   if(!eye)return;
 
   let permissionAsked=false;
+  let permissionState='unknown';
   let orientationBase=null;
   let gravityBase=null;
   let sensorSeen=false;
 
   const clamp=v=>Math.max(-1,Math.min(1,v));
   const running=()=>document.body.classList.contains('game-running');
+  const emit=s=>window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:s}));
 
   function angle(){
     if(screen.orientation&&Number.isFinite(screen.orientation.angle))return ((screen.orientation.angle%360)+360)%360;
@@ -37,7 +39,7 @@
   function markSensor(){
     if(sensorSeen)return;
     sensorSeen=true;
-    window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:'ok'}));
+    emit('ok');
   }
 
   function onOrientation(e){
@@ -46,12 +48,14 @@
     markSensor();
     if(orientationBase===null){orientationBase=side;return;}
     if(!running())return;
-    // 傾けた角度そのものを、継続的な左右の力として使う。
-    window.dispatchEvent(new CustomEvent('shiten-steer',{detail:clamp((side-orientationBase)/10)}));
+    emitSteer((side-orientationBase)/10);
+  }
+
+  function emitSteer(v){
+    window.dispatchEvent(new CustomEvent('shiten-steer',{detail:clamp(v)}));
   }
 
   function onMotion(e){
-    // 「傾ける」だけでなく、端末そのものを左右へスッと動かした時も効かせる。
     const linear=horizontalAxis(e.acceleration);
     if(Number.isFinite(linear)){
       markSensor();
@@ -60,8 +64,6 @@
       }
       return;
     }
-
-    // acceleration が取れない端末では重力込みの値から変化量を使う。
     const raw=horizontalAxis(e.accelerationIncludingGravity);
     if(!Number.isFinite(raw))return;
     markSensor();
@@ -77,39 +79,55 @@
   window.addEventListener('devicemotion',onMotion,{passive:true});
 
   async function requestSensors(){
-    // iOS はユーザー操作の同期的な起点から permission API を呼ぶ必要がある。
-    if(permissionAsked)return;
+    if(permissionAsked){
+      emit(permissionState);
+      return;
+    }
     permissionAsked=true;
+    permissionState='requesting';
+    emit('requesting');
     try{
-      const requests=[];
+      const calls=[];
       if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
-        requests.push(DeviceMotionEvent.requestPermission());
+        calls.push(DeviceMotionEvent.requestPermission());
       }
       if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
-        requests.push(DeviceOrientationEvent.requestPermission());
+        calls.push(DeviceOrientationEvent.requestPermission());
       }
-      if(requests.length){
-        const result=await Promise.all(requests);
-        const ok=result.every(v=>v==='granted');
-        window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:ok?'granted':'denied'}));
-        if(!ok)permissionAsked=false;
+      if(calls.length){
+        const settled=await Promise.allSettled(calls);
+        const values=settled.filter(r=>r.status==='fulfilled').map(r=>r.value);
+        const anyGranted=values.includes('granted');
+        const allDenied=values.length>0&&values.every(v=>v!=='granted');
+        permissionState=anyGranted?'granted':allDenied?'denied':'error';
+        emit(permissionState);
+        if(!anyGranted)permissionAsked=false;
       }else{
-        window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:'not-required'}));
+        const hasAPI=('DeviceMotionEvent'in window)||('DeviceOrientationEvent'in window);
+        permissionState=hasAPI?'not-required':'unavailable';
+        emit(permissionState);
       }
     }catch(_){
       permissionAsked=false;
-      window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:'error'}));
+      permissionState='error';
+      emit('error');
     }
   }
 
-  // 許可要求は黒目に触れたその瞬間。Promise の前に API 呼び出しまで行う。
+  // iOS の permission API はユーザー操作中に呼ぶ。
   eye.addEventListener('pointerdown',requestSensors,{capture:true});
 
-  // ゲーム開始時の持ち方をニュートラル位置として再キャリブレーション。
   window.addEventListener('shiten-game-start',()=>{
     orientationBase=null;
     gravityBase=null;
     sensorSeen=false;
-    window.dispatchEvent(new CustomEvent('shiten-sensor',{detail:'waiting'}));
+    // pointerdown で得た許可結果を、game.js が受け取れるタイミングでもう一度通知する。
+    emit(permissionState==='unknown'?'waiting':permissionState);
+    // 許可済みなのにイベントが一度も来ない場合は、アプリ内WebView等でセンサー配信が止められている可能性を明示。
+    setTimeout(()=>{
+      if(!running()||sensorSeen)return;
+      if(permissionState==='granted')emit('granted-no-events');
+      else if(permissionState==='not-required')emit('no-events');
+    },900);
   });
 })();
