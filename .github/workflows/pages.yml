@@ -24,7 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Inject drop game
-        run: sed -i 's#</body>#<script src="game.js"></script><script src="tilt-fix.js"></script></body>#' index.html
+        run: |
+          VERSION="${GITHUB_SHA}"
+          sed -i "s#</body>#<script src=\"game.js?v=${VERSION}\"></script><script src=\"tilt-fix.js?v=${VERSION}\"></script></body>#" index.html
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
