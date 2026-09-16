@@ -19,7 +19,11 @@
     );
     code=code.replace(
       "function dragEnd(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!==dragPointer))return;gesture=false;dragPointer=null;try{eye.releasePointerCapture(e.pointerId)}catch(_){}pupil.classList.remove('drop-ready');if(maxDown>=DROP_DISTANCE)startDropGame()}",
-      "function dragEnd(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!==dragPointer))return;gesture=false;dragPointer=null;try{eye.releasePointerCapture(e.pointerId)}catch(_){}pupil.classList.remove('drop-ready');if(maxDown>=DROP_DISTANCE||maxDown<8)startDropGame()}"
+      "function dragEnd(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!==dragPointer))return;gesture=false;dragPointer=null;try{eye.releasePointerCapture(e.pointerId)}catch(_){}pupil.classList.remove('drop-ready');if(maxDown>=DROP_DISTANCE)startDropGame()}"
+    );
+    code=code.replace(
+      "eye.addEventListener('pointerup',dragEnd);",
+      "eye.addEventListener('pointerup',dragEnd);pupil.addEventListener('click',function(e){e.stopPropagation();if(!gameRunning)startDropGame()});"
     );
     code=code.replace(
       "window.addEventListener('pointermove',e=>{if(!gameRunning||!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8)manualScroll=true;else steerX=e.clientX+scrollX;markInteraction()},{passive:true});",
@@ -28,17 +32,25 @@
     code=code.replace("touch-action:manipulation;cursor:pointer","touch-action:pan-y;cursor:pointer");
     code=code.replace(
       "const secretHints=['一番上の目玉の目線を、<b>下にしてみよう！</b>','上の大きな黒目を、<b>下へぐーっと動かす</b>と……？'];",
-      "const secretHints=['一番上の大きな黒目を、<b>タップしてみよう！</b>','黒目を<b>タップ</b>すると、何か落ちてくるかも……？'];"
+      "const secretHints=['一番上の大きな黒目を、<b>タップしてみよう！</b>','黒目を<b>タップ</b>すると、黒い球が落ちてくるよ。'];"
     );
     Function(code)();
 
     var style=document.createElement('style');
     style.textContent=`
-.hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
+.hero-eye-wrap{touch-action:pan-y!important}
+.hero-pupil{pointer-events:auto!important;cursor:pointer}
 `;
     document.head.appendChild(style);
 
     var hero=document.getElementById('heroEye');
-    if(hero)hero.setAttribute('aria-label','黒目をタップしてゲームを始める');
+    var pupil=document.getElementById('heroPupil');
+    if(hero)hero.setAttribute('aria-label','動く目');
+    if(pupil){
+      pupil.setAttribute('role','button');
+      pupil.setAttribute('tabindex','0');
+      pupil.setAttribute('aria-label','タップして黒い球のゲームを始める');
+      pupil.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&window.__shitenStartGame){e.preventDefault();window.__shitenStartGame();}});
+    }
   }).catch(function(e){console.error('game load failed',e);});
 })();
