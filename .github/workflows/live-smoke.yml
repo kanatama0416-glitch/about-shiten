@@ -30,7 +30,7 @@ jobs:
           W=WebDriverWait(d,25)
 
           def load(url):
-              d.get(url+'?smoke=20260916-fixes-v2')
+              d.get(url+'?smoke=20260916-fixes-v3')
               W.until(lambda x:'ページを読み込めませんでした。' not in x.find_element(By.TAG_NAME,'body').text)
 
           load(base+'about-shiten/')
@@ -70,13 +70,16 @@ jobs:
           page=d.find_element(By.CSS_SELECTOR,'main.page')
           svg=d.find_element(By.ID,'p4GardenSvg')
           page_h=d.execute_script('return arguments[0].scrollHeight',page)
-          doc_h=d.execute_script('return document.documentElement.scrollHeight')
-          vb=svg.get_attribute('viewBox').split()
-          svg_h=float(vb[3])
-          assert svg_h>=page_h-8,(svg_h,page_h,doc_h)
+          garden_h=d.execute_script('return arguments[0].getBoundingClientRect().height',garden)
+          svg_h=d.execute_script('return arguments[0].getBoundingClientRect().height',svg)
           flowers=d.find_elements(By.CSS_SELECTOR,'.p4-flower')
+          assert garden_h>=page_h-8,(garden_h,page_h)
+          assert svg_h>=page_h-8,(svg_h,page_h)
           assert flowers and float(flowers[-1].value_of_css_property('opacity'))>0.85
-          print('PERSON4_FULL_GARDEN_OK',svg_h,page_h,doc_h)
+          last_bottom=d.execute_script('return arguments[0].getBoundingClientRect().bottom + window.scrollY',flowers[-1])
+          page_top=d.execute_script('return arguments[0].getBoundingClientRect().top + window.scrollY',page)
+          assert last_bottom>page_top+page_h*0.72,(last_bottom,page_top,page_h)
+          print('PERSON4_FULL_GARDEN_OK',garden_h,svg_h,page_h,last_bottom)
           d.quit()
           PY
           python /tmp/check.py
