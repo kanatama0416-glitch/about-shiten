@@ -1,0 +1,85 @@
+name: Live Shiten Smoke
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install browser dependency
+        run: python -m pip install --disable-pip-version-check selenium
+      - name: Verify live pages
+        run: |
+          sleep 25
+          cat > /tmp/check.py <<'PY'
+          import time
+          from selenium import webdriver
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support.ui import WebDriverWait
+          from selenium.webdriver.common.action_chains import ActionChains
+
+          base='https://kanatama0416-glitch.github.io/'
+          o=webdriver.ChromeOptions()
+          for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=390,844']:
+              o.add_argument(a)
+          d=webdriver.Chrome(options=o)
+          d.set_page_load_timeout(30)
+          W=WebDriverWait(d,25)
+
+          def load(url):
+              d.get(url+'?smoke=20260916-fixes')
+              W.until(lambda x:'ページを読み込めませんでした。' not in x.find_element(By.TAG_NAME,'body').text)
+
+          # About: a simple tap on the hero eye must start the ball game.
+          load(base+'about-shiten/')
+          hero=W.until(lambda x:x.find_element(By.ID,'heroEye'))
+          ActionChains(d).move_to_element(hero).click().perform()
+          W.until(lambda x:x.find_element(By.TAG_NAME,'body').get_attribute('class') and 'game-running' in x.find_element(By.TAG_NAME,'body').get_attribute('class'))
+          assert d.find_element(By.CSS_SELECTOR,'.game-ball').value_of_css_property('display')!='none'
+          print('ABOUT_GAME_OK')
+
+          # 01: second press must replay/keep the secret gimmick visible.
+          load(base+'person1-shiten/')
+          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
+          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
+          eye=d.find_element(By.ID,'secretToggle')
+          eye.click(); time.sleep(.15)
+          assert 'secret-mode' in d.find_element(By.TAG_NAME,'body').get_attribute('class')
+          eye.click(); time.sleep(.25)
+          assert 'secret-mode' in d.find_element(By.TAG_NAME,'body').get_attribute('class')
+          secret=d.find_element(By.CSS_SELECTOR,'.essay .secret-eye')
+          assert float(secret.value_of_css_property('opacity'))>0.5
+          print('PERSON1_REPLAY_OK')
+
+          # 03 -> 04: after navigation, a loading treatment or rendered page must appear quickly, not a blank page.
+          load(base+'person3-shiten/')
+          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
+          link=d.find_element(By.CSS_SELECTOR,'a[href="https://kanatama0416-glitch.github.io/person4-shiten/"]')
+          link.click()
+          start=time.time()
+          W.until(lambda x:len(x.find_elements(By.ID,'p4Boot'))>0 or len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
+          assert time.time()-start<3.0
+          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
+          print('03_TO_04_NO_BLANK_OK')
+
+          # 04: garden must build to the full page height and complete within a practical time.
+          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
+          btn=d.find_element(By.ID,'tearToggle')
+          btn.click()
+          garden=d.find_element(By.ID,'p4Garden')
+          W.until(lambda x:garden.get_attribute('data-stage')=='complete')
+          page=d.find_element(By.CSS_SELECTOR,'main.page')
+          svg=d.find_element(By.ID,'p4GardenSvg')
+          page_h=d.execute_script('return arguments[0].scrollHeight',page)
+          vb=svg.get_attribute('viewBox').split()
+          svg_h=float(vb[3])
+          assert svg_h>=page_h-8,(svg_h,page_h)
+          flowers=d.find_elements(By.CSS_SELECTOR,'.p4-flower')
+          assert flowers and float(flowers[-1].value_of_css_property('opacity'))>0.85
+          print('PERSON4_FULL_GARDEN_OK',svg_h,page_h)
+          d.quit()
+          PY
+          python /tmp/check.py
