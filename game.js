@@ -29,7 +29,7 @@ function dragMove(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!
 function dragEnd(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!==dragPointer))return;gesture=false;dragPointer=null;try{eye.releasePointerCapture(e.pointerId)}catch(_){}pupil.classList.remove('drop-ready');if(maxDown>=DROP_DISTANCE)startDropGame()}
 eye.addEventListener('pointerdown',dragStart,{passive:true});eye.addEventListener('pointermove',dragMove,{passive:true});eye.addEventListener('pointerup',dragEnd);eye.addEventListener('pointercancel',dragEnd);
 
-const ball=document.createElement('div');ball.className='game-ball';ball.innerHTML='<div class="game-dot"></div>';ball.setAttribute('role','button');ball.setAttribute('aria-label','ゲームを最初からやり直す');document.body.appendChild(ball);
+const ball=document.createElement('div');ball.className='game-ball';ball.innerHTML='<div class="game-dot"></div>';ball.setAttribute('role','button');ball.setAttribute('aria-label','ダブルタップでゲームを最初からやり直す');document.body.appendChild(ball);
 const hint=document.createElement('div');hint.className='game-hint';document.body.appendChild(hint);
 const idleGuide=document.createElement('div');idleGuide.className='game-idle-guide';idleGuide.textContent='←→ 指で横になぞって動かす';document.body.appendChild(idleGuide);
 const result=document.createElement('div');result.className='game-result';document.body.appendChild(result);
@@ -47,15 +47,16 @@ const STUCK_DELAY=2600;
 
 function hideIdleGuide(){idleGuide.classList.remove('show')}
 function markInteraction(){if(!gameRunning)return;lastInteractionAt=performance.now();hideIdleGuide()}
-function restartDropGame(e){
+function restartDropGame(){
  if(!gameRunning)return;
- if(e){e.preventDefault();e.stopPropagation()}
  gameRunning=false;steer=false;key=0;hint.classList.remove('show');hideIdleGuide();result.classList.remove('show');
  ball.style.opacity='0';ball.classList.remove('dropped','size-pop');
  setTimeout(()=>{ball.style.transition='';ball.style.opacity='1';startDropGame()},60);
 }
-ball.addEventListener('pointerdown',e=>{if(!gameRunning)return;e.preventDefault();e.stopPropagation()},{passive:false});
-ball.addEventListener('pointerup',restartDropGame,{passive:false});
+let lastBallTapAt=0,ballTapStartX=0,ballTapStartY=0,ballTapMoved=false;
+ball.addEventListener('pointerdown',e=>{if(!gameRunning)return;ballTapStartX=e.clientX;ballTapStartY=e.clientY;ballTapMoved=false},{passive:true});
+ball.addEventListener('pointermove',e=>{if(!gameRunning)return;if(Math.hypot(e.clientX-ballTapStartX,e.clientY-ballTapStartY)>12)ballTapMoved=true},{passive:true});
+ball.addEventListener('pointerup',()=>{if(!gameRunning||ballTapMoved)return;const now=performance.now();if(now-lastBallTapAt<=450){lastBallTapAt=0;restartDropGame()}else lastBallTapAt=now},{passive:true});
 function updateIdleGuide(now){
  if(!gameRunning)return;
  if(now-lastInteractionAt<IDLE_GUIDE_DELAY){hideIdleGuide();return}
