@@ -23,7 +23,7 @@
     );
     code=code.replace(
       "eye.addEventListener('pointerup',dragEnd);",
-      "eye.addEventListener('pointerup',dragEnd);pupil.addEventListener('click',function(e){e.stopPropagation();if(!gameRunning)startDropGame()});"
+      "eye.addEventListener('pointerup',dragEnd);eye.addEventListener('click',function(){if(!gameRunning)startDropGame()});"
     );
     code=code.replace(
       "window.addEventListener('pointermove',e=>{if(!gameRunning||!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8)manualScroll=true;else steerX=e.clientX+scrollX;markInteraction()},{passive:true});",
@@ -32,25 +32,24 @@
     code=code.replace("touch-action:manipulation;cursor:pointer","touch-action:pan-y;cursor:pointer");
     code=code.replace(
       "const secretHints=['一番上の目玉の目線を、<b>下にしてみよう！</b>','上の大きな黒目を、<b>下へぐーっと動かす</b>と……？'];",
-      "const secretHints=['一番上の大きな黒目を、<b>タップしてみよう！</b>','黒目を<b>タップ</b>すると、黒い球が落ちてくるよ。'];"
+      "const secretHints=['一番上の大きな目を、<b>タップしてみよう！</b>','上の目を<b>タップ</b>すると、黒い球が落ちてくるよ。'];"
     );
     Function(code)();
 
     var style=document.createElement('style');
     style.textContent=`
-.hero-eye-wrap{touch-action:pan-y!important}
+.hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
 .hero-pupil{pointer-events:auto!important;cursor:pointer}
 `;
     document.head.appendChild(style);
 
     var hero=document.getElementById('heroEye');
     var pupil=document.getElementById('heroPupil');
-    if(hero)hero.setAttribute('aria-label','動く目');
-    if(pupil){
-      pupil.setAttribute('role','button');
-      pupil.setAttribute('tabindex','0');
-      pupil.setAttribute('aria-label','タップして黒い球のゲームを始める');
-      pupil.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&window.__shitenStartGame){e.preventDefault();window.__shitenStartGame();}});
+    if(hero){
+      hero.setAttribute('role','button');
+      hero.setAttribute('tabindex','0');
+      hero.setAttribute('aria-label','タップして黒い球のゲームを始める');
     }
+    if(pupil)pupil.setAttribute('aria-hidden','true');
   }).catch(function(e){console.error('game load failed',e);});
 })();
