@@ -1,7 +1,6 @@
 (function(){
   'use strict';
-  var previous='https://raw.githubusercontent.com/kanatama0416-glitch/about-shiten/f65d92c2d0023830004ebf56bd59c09624380638/game.js';
-  fetch(previous,{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('game core '+r.status);return r.text();}).then(function(code){
+  fetch('./game-core.js',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('game core '+r.status);return r.text();}).then(function(code){
     code=code.replace(
       "const width=Math.min(document.documentElement.clientWidth,720),left=ballR+7,right=width-ballR-7;",
       "const br=document.querySelector('main').getBoundingClientRect(),left=br.left+scrollX+ballR+7,right=br.right+scrollX-ballR-7;"
@@ -19,5 +18,18 @@
       "const br=document.querySelector('main').getBoundingClientRect(),left=br.left+scrollX+ballR+5,right=br.right+scrollX-ballR-5;"
     );
     Function(code)();
+
+    var style=document.createElement('style');
+    style.textContent=`
+.hero-eye-wrap{touch-action:pan-y!important}
+body.shiten-game-armed .hero-eye-wrap{touch-action:none!important}
+`;
+    document.head.appendChild(style);
+
+    var goal=document.getElementById('goalEye');
+    if(goal){
+      goal.addEventListener('click',function(){document.body.classList.add('shiten-game-armed');});
+      goal.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' ')document.body.classList.add('shiten-game-armed');});
+    }
   }).catch(function(e){console.error('game load failed',e);});
 })();
