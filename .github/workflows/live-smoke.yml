@@ -15,13 +15,22 @@ jobs:
         run: |
           sleep 20
           cat > /tmp/check.py <<'PY'
-          import time
+          import time, urllib.request
           from selenium import webdriver
           from selenium.webdriver.common.by import By
           from selenium.webdriver.support.ui import WebDriverWait
           from selenium.webdriver.common.action_chains import ActionChains
 
           base='https://kanatama0416-glitch.github.io/'
+          # Verify the served 04 HTML itself: standard intro present, custom preboot absent,
+          # and runtime core fetch removed.
+          raw=urllib.request.urlopen(base+'person4-shiten/?rawcheck=1',timeout=20).read().decode('utf-8','replace')
+          assert 'id="intro"' in raw
+          assert 'intro-title">視展' in raw
+          assert 'p4Preboot' not in raw
+          assert "fetch('./core.html'" not in raw
+          print('PERSON4_STATIC_HTML_OK',len(raw))
+
           o=webdriver.ChromeOptions()
           for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=390,844']:
               o.add_argument(a)
@@ -30,7 +39,7 @@ jobs:
           W=WebDriverWait(d,25)
 
           # About: confirm actual acceleration and no invisible 74% gate.
-          d.get(base+'about-shiten/?smoke=freefall-final')
+          d.get(base+'about-shiten/?smoke=freefall-final2')
           hero=W.until(lambda x:x.find_element(By.ID,'heroEye'))
           ActionChains(d).move_to_element(hero).click().perform()
           W.until(lambda x:'game-running' in (x.find_element(By.TAG_NAME,'body').get_attribute('class') or ''))
@@ -50,8 +59,8 @@ jobs:
           assert y3>vh*.74,(y3,vh)
           print('ABOUT_FREE_FALL_OK',round(first,2),round(second,2),round(y3,2),vh)
 
-          # 03 -> 04: measure time to the real page DOM, and require only the standard intro.
-          d.get(base+'person3-shiten/?smoke=p4-static-final')
+          # 03 -> 04: measure time to the actual page DOM.
+          d.get(base+'person3-shiten/?smoke=p4-static-final2')
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'main.page'))>0)
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
           link=W.until(lambda x: next((e for e in x.find_elements(By.CSS_SELECTOR,'a.v') if 'person4-shiten' in (e.get_attribute('href') or '')),None))
@@ -61,9 +70,6 @@ jobs:
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'main.page'))>0)
           ready=time.perf_counter()-started
           assert not d.find_elements(By.ID,'p4Preboot')
-          intro=d.find_elements(By.ID,'intro')
-          assert intro, 'standard intro missing on 04'
-          assert d.find_element(By.CSS_SELECTOR,'#intro .intro-title').text=='視展'
           assert ready<1.5,ready
           print('03_TO_04_STATIC_READY_OK',round(ready,3))
 
