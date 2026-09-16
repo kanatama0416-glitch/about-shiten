@@ -30,15 +30,29 @@ jobs:
           W=WebDriverWait(d,25)
 
           def load(url):
-              d.get(url+'?smoke=20260916-fixes-v3')
+              d.get(url+'?smoke=20260916-freefall-v1')
               W.until(lambda x:'ページを読み込めませんでした。' not in x.find_element(By.TAG_NAME,'body').text)
 
           load(base+'about-shiten/')
           hero=W.until(lambda x:x.find_element(By.ID,'heroEye'))
           ActionChains(d).move_to_element(hero).click().perform()
           W.until(lambda x:'game-running' in (x.find_element(By.TAG_NAME,'body').get_attribute('class') or ''))
-          assert d.find_element(By.CSS_SELECTOR,'.game-ball').value_of_css_property('display')!='none'
-          print('ABOUT_GAME_OK')
+          ball=d.find_element(By.CSS_SELECTOR,'.game-ball')
+          assert ball.value_of_css_property('display')!='none'
+          time.sleep(.20)
+          y0=d.execute_script('return arguments[0].getBoundingClientRect().top',ball)
+          time.sleep(.14)
+          y1=d.execute_script('return arguments[0].getBoundingClientRect().top',ball)
+          time.sleep(.14)
+          y2=d.execute_script('return arguments[0].getBoundingClientRect().top',ball)
+          first=y1-y0; second=y2-y1
+          assert first>1,(y0,y1,y2)
+          assert second>first+1,(first,second,y0,y1,y2)
+          time.sleep(.40)
+          y3=d.execute_script('return arguments[0].getBoundingClientRect().top',ball)
+          vh=d.execute_script('return window.innerHeight')
+          assert y3>vh*.74,(y3,vh)
+          print('ABOUT_FREE_FALL_OK',first,second,y3,vh)
 
           load(base+'person1-shiten/')
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
@@ -56,11 +70,14 @@ jobs:
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
           link=W.until(lambda x: next((e for e in x.find_elements(By.CSS_SELECTOR,'a.v') if 'person4-shiten' in (e.get_attribute('href') or '')),None))
+          started=time.time()
           d.execute_script('arguments[0].click()',link)
           W.until(lambda x:'person4-shiten' in x.current_url)
-          W.until(lambda x:len(x.find_elements(By.ID,'p4Boot'))>0 or len(x.find_elements(By.ID,'p4Preboot'))>0 or len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
+          W.until(lambda x:len(x.find_elements(By.ID,'p4Preboot'))>0 or len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
-          print('03_TO_04_NO_BLANK_OK')
+          ready=time.time()-started
+          assert ready<3.0,ready
+          print('03_TO_04_READY_OK',ready)
 
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
           btn=W.until(lambda x:x.find_element(By.ID,'tearToggle'))
