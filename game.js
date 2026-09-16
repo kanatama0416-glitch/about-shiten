@@ -7,7 +7,7 @@ if(!eye||!pupil||!goal||!goalPupil)return;
 
 const style=document.createElement('style');
 style.textContent=`
-.game-ball{position:fixed;left:0;top:0;width:40px;height:40px;z-index:9999;pointer-events:none;display:none;will-change:transform,width,height}
+.game-ball{position:fixed;left:0;top:0;width:40px;height:40px;z-index:9999;pointer-events:auto;display:none;will-change:transform,width,height;touch-action:manipulation;cursor:pointer}
 .game-ball.on{display:block}.game-dot{width:100%;height:100%;border-radius:50%;background:var(--ink);transform:scale(8);transition:transform .34s cubic-bezier(.18,.82,.28,1.12)}.game-ball.dropped .game-dot{transform:scale(1)}
 body.game-running{overscroll-behavior-y:auto;touch-action:pan-y}body.game-running a{pointer-events:auto}body.game-running .hero-pupil{opacity:0}body.game-running #goalPupil{opacity:0}
 .hero-pupil.drop-ready{filter:drop-shadow(0 8px 0 rgba(0,0,0,.08))}
@@ -29,7 +29,7 @@ function dragMove(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!
 function dragEnd(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!==dragPointer))return;gesture=false;dragPointer=null;try{eye.releasePointerCapture(e.pointerId)}catch(_){}pupil.classList.remove('drop-ready');if(maxDown>=DROP_DISTANCE)startDropGame()}
 eye.addEventListener('pointerdown',dragStart,{passive:true});eye.addEventListener('pointermove',dragMove,{passive:true});eye.addEventListener('pointerup',dragEnd);eye.addEventListener('pointercancel',dragEnd);
 
-const ball=document.createElement('div');ball.className='game-ball';ball.innerHTML='<div class="game-dot"></div>';document.body.appendChild(ball);
+const ball=document.createElement('div');ball.className='game-ball';ball.innerHTML='<div class="game-dot"></div>';ball.setAttribute('role','button');ball.setAttribute('aria-label','ゲームを最初からやり直す');document.body.appendChild(ball);
 const hint=document.createElement('div');hint.className='game-hint';document.body.appendChild(hint);
 const idleGuide=document.createElement('div');idleGuide.className='game-idle-guide';idleGuide.textContent='←→ 指で横になぞって動かす';document.body.appendChild(idleGuide);
 const result=document.createElement('div');result.className='game-result';document.body.appendChild(result);
@@ -47,6 +47,15 @@ const STUCK_DELAY=750;
 
 function hideIdleGuide(){idleGuide.classList.remove('show')}
 function markInteraction(){if(!gameRunning)return;lastInteractionAt=performance.now();hideIdleGuide()}
+function restartDropGame(e){
+ if(!gameRunning)return;
+ if(e){e.preventDefault();e.stopPropagation()}
+ gameRunning=false;steer=false;key=0;hint.classList.remove('show');hideIdleGuide();result.classList.remove('show');
+ ball.style.opacity='0';ball.classList.remove('dropped','size-pop');
+ setTimeout(()=>{ball.style.transition='';ball.style.opacity='1';startDropGame()},60);
+}
+ball.addEventListener('pointerdown',e=>{if(!gameRunning)return;e.preventDefault();e.stopPropagation()},{passive:false});
+ball.addEventListener('pointerup',restartDropGame,{passive:false});
 function updateIdleGuide(now){
  if(!gameRunning)return;
  if(now-lastInteractionAt<IDLE_GUIDE_DELAY){hideIdleGuide();return}
