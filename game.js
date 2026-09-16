@@ -9,7 +9,7 @@ const style=document.createElement('style');
 style.textContent=`
 .game-ball{position:fixed;left:0;top:0;width:40px;height:40px;z-index:9999;pointer-events:none;display:none;will-change:transform,width,height}
 .game-ball.on{display:block}.game-dot{width:100%;height:100%;border-radius:50%;background:var(--ink);transform:scale(8);transition:transform .34s cubic-bezier(.18,.82,.28,1.12)}.game-ball.dropped .game-dot{transform:scale(1)}
-body.game-running{overscroll-behavior-y:auto;touch-action:pan-y}body.game-running a{pointer-events:none}body.game-running .hero-pupil{opacity:0}body.game-running #goalPupil{opacity:0}
+body.game-running{overscroll-behavior-y:auto;touch-action:pan-y}body.game-running a{pointer-events:auto}body.game-running .hero-pupil{opacity:0}body.game-running #goalPupil{opacity:0}
 .hero-pupil.drop-ready{filter:drop-shadow(0 8px 0 rgba(0,0,0,.08))}
 .game-hint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:10000;background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:8px 13px;font:800 10px/1 system-ui,sans-serif;letter-spacing:.05em;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .18s}.game-hint.show{opacity:1}
 .game-idle-guide{position:fixed;left:0;top:0;z-index:10000;max-width:min(220px,calc(100vw - 20px));background:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:8px 10px;box-shadow:4px 4px 0 var(--yellow);font:850 11px/1.35 system-ui,sans-serif;white-space:normal;pointer-events:none;opacity:0;transform:translate3d(0,8px,0);transition:opacity .18s ease,transform .18s ease}.game-idle-guide.show{opacity:1;transform:translate3d(0,0,0)}
@@ -62,7 +62,7 @@ function updateIdleGuide(now){
  idleGuide.style.top=y+'px';
 }
 
-window.addEventListener('pointerdown',e=>{if(!gameRunning)return;steer=true;steerX=e.clientX+scrollX;pointerStartX=e.clientX;pointerStartY=e.clientY;markInteraction()},{passive:true});
+window.addEventListener('pointerdown',e=>{if(!gameRunning)return;if(e.target.closest&&e.target.closest('a'))return;steer=true;steerX=e.clientX+scrollX;pointerStartX=e.clientX;pointerStartY=e.clientY;markInteraction()},{passive:true});
 window.addEventListener('pointermove',e=>{if(!gameRunning||!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8)manualScroll=true;else steerX=e.clientX+scrollX;markInteraction()},{passive:true});
 window.addEventListener('pointerup',()=>{steer=false},{passive:true});
 window.addEventListener('pointercancel',()=>{steer=false;manualScroll=true},{passive:true});
