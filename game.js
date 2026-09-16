@@ -12,7 +12,7 @@ style.textContent=`
 body.game-running{overscroll-behavior-y:auto;touch-action:pan-y}body.game-running a{pointer-events:none}body.game-running .hero-pupil{opacity:0}body.game-running #goalPupil{opacity:0}
 .hero-pupil.drop-ready{filter:drop-shadow(0 8px 0 rgba(0,0,0,.08))}
 .game-hint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:10000;background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:8px 13px;font:800 10px/1 system-ui,sans-serif;letter-spacing:.05em;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .18s}.game-hint.show{opacity:1}
-.game-idle-guide{position:fixed;left:0;top:0;z-index:10000;background:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:8px 10px;box-shadow:4px 4px 0 var(--yellow);font:850 11px/1.35 system-ui,sans-serif;white-space:nowrap;pointer-events:none;opacity:0;transform:translate3d(0,8px,0);transition:opacity .18s ease,transform .18s ease}.game-idle-guide.show{opacity:1;transform:translate3d(0,0,0)}
+.game-idle-guide{position:fixed;left:0;top:0;z-index:10000;max-width:min(220px,calc(100vw - 20px));background:var(--paper);border:2px solid var(--ink);border-radius:16px;padding:8px 10px;box-shadow:4px 4px 0 var(--yellow);font:850 11px/1.35 system-ui,sans-serif;white-space:normal;pointer-events:none;opacity:0;transform:translate3d(0,8px,0);transition:opacity .18s ease,transform .18s ease}.game-idle-guide.show{opacity:1;transform:translate3d(0,0,0)}
 .goal-eye{cursor:pointer;touch-action:manipulation}.goal-eye.hint-pop{animation:goalHintPop .45s cubic-bezier(.2,.9,.3,1)}@keyframes goalHintPop{0%,100%{transform:scale(1)}45%{transform:scale(.93) rotate(-2deg)}70%{transform:scale(1.05) rotate(1deg)}}
 .goal-secret-hint{position:absolute;left:50%;bottom:126px;transform:translate(-50%,10px) rotate(-1deg);width:min(310px,82vw);padding:12px 15px;background:var(--paper);border:3px solid var(--ink);box-shadow:5px 5px 0 var(--yellow);font:850 13px/1.55 system-ui,sans-serif;text-align:center;z-index:10002;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .28s cubic-bezier(.2,.9,.3,1)}.goal-secret-hint:after{content:"";position:absolute;left:50%;bottom:-12px;width:18px;height:18px;background:var(--paper);border-right:3px solid var(--ink);border-bottom:3px solid var(--ink);transform:translateX(-50%) rotate(45deg)}.goal-secret-hint.show{opacity:1;transform:translate(-50%,0) rotate(-1deg)}.goal-secret-hint small{display:block;font:950 8px/1 Arial,sans-serif;letter-spacing:.18em;margin-bottom:6px;opacity:.55}.goal-secret-hint b{font-weight:900}
 .game-result{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.82) rotate(-2deg);z-index:10001;background:var(--paper);border:4px solid var(--ink);box-shadow:8px 8px 0 var(--pink);padding:18px 24px 16px;text-align:center;pointer-events:none;opacity:0;transition:opacity .2s ease,transform .35s cubic-bezier(.18,.9,.3,1.25);min-width:210px}.game-result.show{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-2deg)}.game-result small{display:block;font:900 9px/1 Arial,sans-serif;letter-spacing:.2em;margin-bottom:8px}.game-result strong{display:block;font:950 38px/.95 Arial,sans-serif;letter-spacing:-.04em}.game-result span{font-size:15px;margin-left:4px}.game-result em{display:block;font-style:normal;font:800 10px/1.4 system-ui,sans-serif;margin-top:9px;letter-spacing:.05em}
@@ -31,7 +31,7 @@ eye.addEventListener('pointerdown',dragStart,{passive:true});eye.addEventListene
 
 const ball=document.createElement('div');ball.className='game-ball';ball.innerHTML='<div class="game-dot"></div>';document.body.appendChild(ball);
 const hint=document.createElement('div');hint.className='game-hint';document.body.appendChild(hint);
-const idleGuide=document.createElement('div');idleGuide.className='game-idle-guide';idleGuide.textContent='←→ よこになぞると うごくよ';document.body.appendChild(idleGuide);
+const idleGuide=document.createElement('div');idleGuide.className='game-idle-guide';idleGuide.textContent='←→ 指で横になぞって動かす';document.body.appendChild(idleGuide);
 const result=document.createElement('div');result.className='game-result';document.body.appendChild(result);
 const secretHint=document.createElement('div');secretHint.className='goal-secret-hint';secretHint.setAttribute('aria-live','polite');goal.parentElement.appendChild(secretHint);
 goal.setAttribute('role','button');goal.setAttribute('tabindex','0');goal.setAttribute('aria-label','ゲームのヒントを見る');
@@ -41,18 +41,23 @@ goal.addEventListener('click',showSecretHint);goal.addEventListener('keydown',e=
 let ballX=0,ballY=0,ballVX=0,ballVY=0,ballR=20,last=0,obstacles=[],checkpoints=[],steer=false,steerX=0,key=0,checkpointIndex=0,floorY=0,gameStartTime=0;
 let pointerStartX=0,pointerStartY=0,manualScroll=false,stuckAnchorY=0,stuckSince=0,lastInteractionAt=0;
 const checkpointSizes=[30,24,20,28,22,18,26,20];
-const IDLE_GUIDE_DELAY=1700;
+const IDLE_GUIDE_DELAY=1500;
 
 function hideIdleGuide(){idleGuide.classList.remove('show')}
 function markInteraction(){if(!gameRunning)return;lastInteractionAt=performance.now();hideIdleGuide()}
 function updateIdleGuide(now){
  if(!gameRunning)return;
  if(steer||key||now-lastInteractionAt<IDLE_GUIDE_DELAY){hideIdleGuide();return}
- const x=Math.min(innerWidth-18,Math.max(18,ballX-scrollX+ballR+14));
- const y=Math.min(innerHeight-18,Math.max(18,ballY-scrollY-ballR-22));
+ idleGuide.classList.add('show');
+ const r=idleGuide.getBoundingClientRect();
+ const sx=ballX-scrollX,sy=ballY-scrollY,gap=12,margin=10;
+ let x=sx+ballR+gap;
+ if(x+r.width>innerWidth-margin)x=sx-ballR-gap-r.width;
+ x=Math.max(margin,Math.min(innerWidth-r.width-margin,x));
+ let y=sy-r.height/2;
+ y=Math.max(margin,Math.min(innerHeight-r.height-margin,y));
  idleGuide.style.left=x+'px';
  idleGuide.style.top=y+'px';
- idleGuide.classList.add('show');
 }
 
 window.addEventListener('pointerdown',e=>{if(!gameRunning)return;steer=true;steerX=e.clientX+scrollX;pointerStartX=e.clientX;pointerStartY=e.clientY;markInteraction()},{passive:true});
@@ -69,9 +74,20 @@ function hitRect(o){const cx=Math.max(o.l,Math.min(ballX,o.r)),cy=Math.max(o.t,M
 function setSize(size,cp){ballR=size/2;ball.style.width=size+'px';ball.style.height=size+'px';ball.classList.remove('size-pop');void ball.offsetWidth;ball.classList.add('size-pop');cp.el.classList.remove('game-eye-hit');void cp.el.offsetWidth;cp.el.classList.add('game-eye-hit');hint.textContent=`SIZE CHANGE! ${size}px`;hint.classList.add('show');clearTimeout(setSize.t);setSize.t=setTimeout(()=>hint.classList.remove('show'),700)}
 function checkCheckpoints(){for(const cp of checkpoints){if(cp.hit)continue;if(cp.b<ballY-ballR-40||cp.t>ballY+ballR+40)continue;if(hitRect(cp)){cp.hit=true;setSize(checkpointSizes[Math.min(checkpointIndex,checkpointSizes.length-1)],cp);checkpointIndex++;ballVY=Math.min(ballVY,320);ballVX*=.72;stuckAnchorY=ballY;stuckSince=performance.now();break}}}
 function collide(o){const cx=Math.max(o.l,Math.min(ballX,o.r)),cy=Math.max(o.t,Math.min(ballY,o.b));let dx=ballX-cx,dy=ballY-cy,d2=dx*dx+dy*dy;if(d2>=ballR*ballR)return;let nx=0,ny=0,pen=0;if(d2>.001){const d=Math.sqrt(d2);nx=dx/d;ny=dy/d;pen=ballR-d}else{const ds=[{v:Math.abs(ballX-o.l),x:-1,y:0},{v:Math.abs(o.r-ballX),x:1,y:0},{v:Math.abs(ballY-o.t),x:0,y:-1},{v:Math.abs(o.b-ballY),x:0,y:1}].sort((a,b)=>a.v-b.v)[0];nx=ds.x;ny=ds.y;pen=ballR+ds.v}ballX+=nx*(pen+.8);ballY+=ny*(pen+.8);const vn=ballVX*nx+ballVY*ny;if(vn<0){ballVX-=1.48*vn*nx;ballVY-=1.48*vn*ny;ballVX*=.94}}
-function nextEyeTarget(){const cp=checkpoints.find(cp=>!cp.hit&&cp.b>=ballY-ballR*.7);if(cp)return{x:(cp.l+cp.r)/2,y:(cp.t+cp.b)/2};const r=goal.getBoundingClientRect();return{x:r.left+r.width/2+scrollX,y:r.top+r.height/2+scrollY}}
-function guideTowardEye(dt){if(steer||key)return;const t=nextEyeTarget(),dx=t.x-ballX;if(Math.abs(dx)<8)return;ballVX+=Math.max(-620,Math.min(620,dx*3.2))*dt}
-function releaseIfStuck(now){const progress=Math.max(10,ballR*.55);if(ballY>stuckAnchorY+progress){stuckAnchorY=ballY;stuckSince=now;return}if(!stuckSince)stuckSince=now;if(now-stuckSince<1400)return;const t=nextEyeTarget(),dx=t.x-ballX,dir=Math.sign(dx)||1;if(Math.abs(ballVX)<90)ballVX=dir*120;ballVY=Math.max(ballVY,210);stuckAnchorY=ballY;stuckSince=now}
+function releaseIfStuck(now){
+ const progress=Math.max(10,ballR*.55);
+ if(ballY>stuckAnchorY+progress){stuckAnchorY=ballY;stuckSince=now;return}
+ if(!stuckSince)stuckSince=now;
+ if(now-stuckSince<950)return;
+ const width=Math.min(document.documentElement.clientWidth,720),mid=width/2+scrollX;
+ const nearLeft=ballX<scrollX+ballR+55,nearRight=ballX>scrollX+width-ballR-55;
+ const dir=nearRight?-1:nearLeft?1:(ballX>mid?-1:1);
+ ballX+=dir*Math.min(16,Math.max(8,ballR*.7));
+ ballVX=dir*180;
+ ballVY=Math.max(ballVY,300);
+ stuckAnchorY=ballY;
+ stuckSince=now;
+}
 function goalHit(){const r=goal.getBoundingClientRect();const gx=r.left+r.width/2+scrollX,gy=r.top+r.height/2+scrollY;const rx=r.width*.34,ry=r.height*.30;const nx=(ballX-gx)/Math.max(1,rx-ballR*.35),ny=(ballY-gy)/Math.max(1,ry-ballR*.35);return nx*nx+ny*ny<=1?{gx,gy}:null}
 function startDropGame(){if(gameRunning)return;gameRunning=true;secretHint.classList.remove('show');gameStartTime=performance.now();result.classList.remove('show');checkpointIndex=0;steer=false;key=0;manualScroll=false;const pr=pupil.getBoundingClientRect(),cx=pr.left+pr.width/2,cy=pr.top+pr.height/2,size=Math.max(36,Math.min(42,innerWidth*.105));ballR=size/2;ball.style.width=size+'px';ball.style.height=size+'px';ballX=cx+scrollX;ballY=cy+scrollY;ballVX=0;ballVY=90;obstacles=textRects();checkpoints=checkpointRects();floorY=document.documentElement.scrollHeight-8;stuckAnchorY=ballY;stuckSince=performance.now();lastInteractionAt=performance.now();hideIdleGuide();document.body.classList.add('game-running');ball.classList.add('on');ball.classList.remove('dropped','size-pop');ball.style.opacity='1';ball.style.transform=`translate3d(${cx-ballR}px,${cy-ballR}px,0)`;hint.textContent='← 横になぞる：操作 ｜ 縦にスワイプ：スクロール →';hint.classList.add('show');setTimeout(()=>hint.classList.remove('show'),2400);void ball.offsetWidth;requestAnimationFrame(()=>ball.classList.add('dropped'));last=performance.now();setTimeout(()=>requestAnimationFrame(frame),160)}
 function frame(now){if(!gameRunning)return;const dt=Math.min(.025,Math.max(.006,(now-last)/1000));last=now;if(steer){const dx=steerX-ballX;ballVX+=Math.max(-1550,Math.min(1550,dx*11))*dt}else if(key)ballVX+=key*1450*dt;else ballVX*=Math.pow(.992,dt*60);ballVY+=980*dt;ballVX*=Math.pow(.982,dt*60);ballVY=Math.min(ballVY,760);ballX+=ballVX*dt;ballY+=ballVY*dt;const left=ballR+5,right=Math.min(document.documentElement.clientWidth,720)-ballR-5;if(ballX<left){ballX=left;ballVX=Math.abs(ballVX)*.58}else if(ballX>right){ballX=right;ballVX=-Math.abs(ballVX)*.58}checkCheckpoints();for(const o of obstacles){if(o.b<ballY-ballR-70||o.t>ballY+ballR+70)continue;collide(o)}releaseIfStuck(now);const g=goalHit();if(g){finish(g.gx,g.gy);return}if(ballY+ballR>=floorY){ballY=floorY-ballR;ballVY=-Math.max(520,Math.abs(ballVY)*.78);ballVX*=.92}if(!manualScroll){const desired=Math.max(0,Math.min(document.documentElement.scrollHeight-innerHeight,ballY-innerHeight*.58));window.scrollTo(0,scrollY+(desired-scrollY)*Math.min(1,dt*7))}ball.style.transform=`translate3d(${ballX-scrollX-ballR}px,${ballY-scrollY-ballR}px,0)`;updateIdleGuide(now);requestAnimationFrame(frame)}
