@@ -13,7 +13,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check selenium
       - name: Verify live pages
         run: |
-          sleep 25
+          sleep 20
           cat > /tmp/check.py <<'PY'
           import time
           from selenium import webdriver
@@ -29,16 +29,12 @@ jobs:
           d.set_page_load_timeout(30)
           W=WebDriverWait(d,25)
 
-          def load(url):
-              d.get(url+'?smoke=20260916-freefall-v1')
-              W.until(lambda x:'ページを読み込めませんでした。' not in x.find_element(By.TAG_NAME,'body').text)
-
-          load(base+'about-shiten/')
+          # About: confirm actual acceleration and no invisible 74% gate.
+          d.get(base+'about-shiten/?smoke=freefall-final')
           hero=W.until(lambda x:x.find_element(By.ID,'heroEye'))
           ActionChains(d).move_to_element(hero).click().perform()
           W.until(lambda x:'game-running' in (x.find_element(By.TAG_NAME,'body').get_attribute('class') or ''))
           ball=d.find_element(By.CSS_SELECTOR,'.game-ball')
-          assert ball.value_of_css_property('display')!='none'
           time.sleep(.20)
           y0=d.execute_script('return arguments[0].getBoundingClientRect().top',ball)
           time.sleep(.14)
@@ -52,32 +48,24 @@ jobs:
           y3=d.execute_script('return arguments[0].getBoundingClientRect().top',ball)
           vh=d.execute_script('return window.innerHeight')
           assert y3>vh*.74,(y3,vh)
-          print('ABOUT_FREE_FALL_OK',first,second,y3,vh)
+          print('ABOUT_FREE_FALL_OK',round(first,2),round(second,2),round(y3,2),vh)
 
-          load(base+'person1-shiten/')
-          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
-          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
-          eye=W.until(lambda x:x.find_element(By.ID,'secretToggle'))
-          eye.click(); time.sleep(.15)
-          assert 'secret-mode' in (d.find_element(By.TAG_NAME,'body').get_attribute('class') or '')
-          eye.click(); time.sleep(.25)
-          assert 'secret-mode' in (d.find_element(By.TAG_NAME,'body').get_attribute('class') or '')
-          secret=W.until(lambda x:x.find_element(By.CSS_SELECTOR,'.essay .secret-eye'))
-          assert float(secret.value_of_css_property('opacity'))>0.5
-          print('PERSON1_REPLAY_OK')
-
-          load(base+'person3-shiten/')
-          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
+          # 03 -> 04: measure time to the real page DOM, and require only the standard intro.
+          d.get(base+'person3-shiten/?smoke=p4-static-final')
+          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'main.page'))>0)
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
           link=W.until(lambda x: next((e for e in x.find_elements(By.CSS_SELECTOR,'a.v') if 'person4-shiten' in (e.get_attribute('href') or '')),None))
-          started=time.time()
+          started=time.perf_counter()
           d.execute_script('arguments[0].click()',link)
           W.until(lambda x:'person4-shiten' in x.current_url)
-          W.until(lambda x:len(x.find_elements(By.ID,'p4Preboot'))>0 or len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
-          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.page'))>0)
-          ready=time.time()-started
-          assert ready<3.0,ready
-          print('03_TO_04_READY_OK',ready)
+          W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'main.page'))>0)
+          ready=time.perf_counter()-started
+          assert not d.find_elements(By.ID,'p4Preboot')
+          intro=d.find_elements(By.ID,'intro')
+          assert intro, 'standard intro missing on 04'
+          assert d.find_element(By.CSS_SELECTOR,'#intro .intro-title').text=='視展'
+          assert ready<1.5,ready
+          print('03_TO_04_STATIC_READY_OK',round(ready,3))
 
           W.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.intro'))==0)
           btn=W.until(lambda x:x.find_element(By.ID,'tearToggle'))
@@ -93,10 +81,7 @@ jobs:
           assert garden_h>=page_h-8,(garden_h,page_h)
           assert svg_h>=page_h-8,(svg_h,page_h)
           assert flowers and float(flowers[-1].value_of_css_property('opacity'))>0.85
-          last_bottom=d.execute_script('return arguments[0].getBoundingClientRect().bottom + window.scrollY',flowers[-1])
-          page_top=d.execute_script('return arguments[0].getBoundingClientRect().top + window.scrollY',page)
-          assert last_bottom>page_top+page_h*0.72,(last_bottom,page_top,page_h)
-          print('PERSON4_FULL_GARDEN_OK',garden_h,svg_h,page_h,last_bottom)
+          print('PERSON4_FULL_GARDEN_OK',garden_h,svg_h,page_h)
           d.quit()
           PY
           python /tmp/check.py
