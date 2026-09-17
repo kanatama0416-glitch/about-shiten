@@ -51,7 +51,7 @@ body.game-running .hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
   pointer-events:none;
   opacity:0;
   transform:translate3d(0,0,0);
-  transition:left .42s cubic-bezier(.2,.8,.2,1),top .42s cubic-bezier(.2,.8,.2,1),opacity .2s ease;
+  transition:left .62s cubic-bezier(.2,.8,.2,1),top .62s cubic-bezier(.2,.8,.2,1),opacity .25s ease;
 }
 .view-click-guide .guide-label{
   display:block;
@@ -64,14 +64,14 @@ body.game-running .hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
   letter-spacing:.05em;
   white-space:nowrap;
   box-shadow:3px 3px 0 var(--guide-color,var(--pink));
-  animation:guidePop .78s ease-in-out infinite alternate;
+  animation:guidePop 1.25s ease-in-out infinite alternate;
 }
 .view-click-guide .guide-arrow{
   display:block;
   margin:-1px 0 0 28px;
   color:var(--ink);
   font:950 22px/.8 Arial,sans-serif;
-  animation:guideArrow .62s ease-in-out infinite alternate;
+  animation:guideArrow 1s ease-in-out infinite alternate;
 }
 body.game-running .view-click-guide{display:none!important}
 .view-card.guide-target .card-eye{transform:scale(1.07)}
@@ -118,7 +118,7 @@ body.game-running .view-click-guide{display:none!important}
         if(document.body.classList.contains('game-running'))return;
         guideIndex=(guideIndex+1)%cards.length;
         placeGuide(guideIndex);
-      },1150);
+      },2000);
       window.addEventListener('resize',function(){placeGuide(guideIndex)},{passive:true});
     }
   }).catch(function(e){console.error('game load failed',e);});
