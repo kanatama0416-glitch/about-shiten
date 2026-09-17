@@ -44,32 +44,40 @@
 body:not(.game-running) .hero-eye-wrap{touch-action:none!important;cursor:pointer}
 body.game-running .hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
 .hero-pupil{pointer-events:auto!important;cursor:pointer}
-body:not(.game-running) .view-card::after{
-  content:'クリック！';
+.view-click-guide{
   position:absolute;
-  left:119px;
-  top:82px;
-  z-index:4;
-  color:var(--c);
-  font:950 10px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sans-serif;
-  letter-spacing:.04em;
-  white-space:nowrap;
+  z-index:20;
+  width:max-content;
   pointer-events:none;
   opacity:0;
-  transform:translateY(5px) scale(.94);
-  animation:aboutClickRelay 6s ease-in-out infinite;
+  transform:translate3d(0,0,0);
+  transition:left .42s cubic-bezier(.2,.8,.2,1),top .42s cubic-bezier(.2,.8,.2,1),opacity .2s ease;
 }
-body:not(.game-running) .view-card:nth-child(1)::after{animation-delay:0s}
-body:not(.game-running) .view-card:nth-child(2)::after{animation-delay:1.2s}
-body:not(.game-running) .view-card:nth-child(3)::after{animation-delay:2.4s}
-body:not(.game-running) .view-card:nth-child(4)::after{animation-delay:3.6s}
-body:not(.game-running) .view-card:nth-child(5)::after{animation-delay:4.8s}
-body.game-running .view-card::after{content:none!important;animation:none!important}
-@keyframes aboutClickRelay{
-  0%,4%,24%,100%{opacity:0;transform:translateY(5px) scale(.94)}
-  8%,18%{opacity:1;transform:translateY(0) scale(1)}
+.view-click-guide .guide-label{
+  display:block;
+  padding:8px 12px 7px;
+  border:3px solid var(--ink);
+  border-radius:999px;
+  background:var(--ink);
+  color:var(--paper);
+  font:950 14px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sans-serif;
+  letter-spacing:.05em;
+  white-space:nowrap;
+  box-shadow:3px 3px 0 var(--guide-color,var(--pink));
+  animation:guidePop .78s ease-in-out infinite alternate;
 }
-@media(prefers-reduced-motion:reduce){body:not(.game-running) .view-card::after{animation:none;opacity:1}.view-card:nth-child(n+2)::after{display:none}}
+.view-click-guide .guide-arrow{
+  display:block;
+  margin:-1px 0 0 28px;
+  color:var(--ink);
+  font:950 22px/.8 Arial,sans-serif;
+  animation:guideArrow .62s ease-in-out infinite alternate;
+}
+body.game-running .view-click-guide{display:none!important}
+.view-card.guide-target .card-eye{transform:scale(1.07)}
+@keyframes guidePop{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-4px) rotate(2deg)}}
+@keyframes guideArrow{from{transform:translateY(0)}to{transform:translateY(5px)}}
+@media(prefers-reduced-motion:reduce){.view-click-guide,.view-click-guide .guide-label,.view-click-guide .guide-arrow{transition:none!important;animation:none!important}}
 `;
     document.head.appendChild(style);
 
@@ -81,5 +89,37 @@ body.game-running .view-card::after{content:none!important;animation:none!import
       hero.setAttribute('aria-label','下に引くかタップして黒い球のゲームを始める');
     }
     if(pupil)pupil.setAttribute('aria-hidden','true');
+
+    var list=document.querySelector('.view-list');
+    var cards=list?Array.from(list.querySelectorAll('.view-card')):[];
+    if(list&&cards.length){
+      var guide=document.createElement('div');
+      guide.className='view-click-guide';
+      guide.setAttribute('aria-hidden','true');
+      guide.innerHTML='<span class="guide-label">クリック！</span><span class="guide-arrow">↓</span>';
+      list.appendChild(guide);
+      var guideIndex=0;
+      function placeGuide(index){
+        if(document.body.classList.contains('game-running'))return;
+        cards.forEach(function(card){card.classList.remove('guide-target')});
+        var card=cards[index%cards.length];
+        card.classList.add('guide-target');
+        var lr=list.getBoundingClientRect();
+        var er=card.querySelector('.card-eye').getBoundingClientRect();
+        var left=er.left-lr.left+8;
+        var top=er.top-lr.top-50;
+        guide.style.setProperty('--guide-color',getComputedStyle(card).getPropertyValue('--c').trim()||'var(--pink)');
+        guide.style.left=left+'px';
+        guide.style.top=top+'px';
+        guide.style.opacity='1';
+      }
+      placeGuide(guideIndex);
+      setInterval(function(){
+        if(document.body.classList.contains('game-running'))return;
+        guideIndex=(guideIndex+1)%cards.length;
+        placeGuide(guideIndex);
+      },1150);
+      window.addEventListener('resize',function(){placeGuide(guideIndex)},{passive:true});
+    }
   }).catch(function(e){console.error('game load failed',e);});
 })();
