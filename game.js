@@ -44,6 +44,32 @@
 body:not(.game-running) .hero-eye-wrap{touch-action:none!important;cursor:pointer}
 body.game-running .hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
 .hero-pupil{pointer-events:auto!important;cursor:pointer}
+body:not(.game-running) .view-card::after{
+  content:'クリック！';
+  position:absolute;
+  left:119px;
+  top:82px;
+  z-index:4;
+  color:var(--c);
+  font:950 10px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',sans-serif;
+  letter-spacing:.04em;
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(5px) scale(.94);
+  animation:aboutClickRelay 6s ease-in-out infinite;
+}
+body:not(.game-running) .view-card:nth-child(1)::after{animation-delay:0s}
+body:not(.game-running) .view-card:nth-child(2)::after{animation-delay:1.2s}
+body:not(.game-running) .view-card:nth-child(3)::after{animation-delay:2.4s}
+body:not(.game-running) .view-card:nth-child(4)::after{animation-delay:3.6s}
+body:not(.game-running) .view-card:nth-child(5)::after{animation-delay:4.8s}
+body.game-running .view-card::after{content:none!important;animation:none!important}
+@keyframes aboutClickRelay{
+  0%,4%,24%,100%{opacity:0;transform:translateY(5px) scale(.94)}
+  8%,18%{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){body:not(.game-running) .view-card::after{animation:none;opacity:1}.view-card:nth-child(n+2)::after{display:none}}
 `;
     document.head.appendChild(style);
 
