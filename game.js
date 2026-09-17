@@ -41,7 +41,8 @@
 
     var style=document.createElement('style');
     style.textContent=`
-.hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
+body:not(.game-running) .hero-eye-wrap{touch-action:none!important;cursor:pointer}
+body.game-running .hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
 .hero-pupil{pointer-events:auto!important;cursor:pointer}
 `;
     document.head.appendChild(style);
@@ -51,7 +52,7 @@
     if(hero){
       hero.setAttribute('role','button');
       hero.setAttribute('tabindex','0');
-      hero.setAttribute('aria-label','タップして黒い球のゲームを始める');
+      hero.setAttribute('aria-label','下に引くかタップして黒い球のゲームを始める');
     }
     if(pupil)pupil.setAttribute('aria-hidden','true');
   }).catch(function(e){console.error('game load failed',e);});
