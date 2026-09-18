@@ -27,9 +27,17 @@
     );
     code=code.replace(
       "window.addEventListener('pointermove',e=>{if(!gameRunning||!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8)manualScroll=true;else steerX=e.clientX+scrollX;markInteraction()},{passive:true});",
-      "window.addEventListener('pointermove',e=>{if(!gameRunning||!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8){manualScroll=true;steer=false}else steerX=e.clientX+scrollX;markInteraction()},{passive:true});"
+      "window.addEventListener('pointermove',e=>{if(!gameRunning)return;if(e.pointerType==='mouse'){steer=true;steerX=e.clientX+scrollX;markInteraction();return}if(!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8){manualScroll=true;steer=false}else steerX=e.clientX+scrollX;markInteraction()},{passive:true});"
     );
     code=code.replace("touch-action:manipulation;cursor:pointer","touch-action:pan-y;cursor:pointer");
+    code=code.replace(
+      "idleGuide.textContent=screenY>innerHeight*.68?'↓ ページをスクロールして進む':'←→ 指で横になぞって動かす';",
+      "const finePointer=window.matchMedia('(pointer:fine)').matches,atPageBottom=scrollY+innerHeight>=document.documentElement.scrollHeight-6;idleGuide.textContent=finePointer?(atPageBottom?'←→ マウスを左右に動かしてゴールへ':'↓ ホイールで下へ ｜ ←→ マウスを左右に動かす'):(screenY>innerHeight*.68&&!atPageBottom?'↓ ページをスクロールして進む':'←→ 指で横になぞって動かす');"
+    );
+    code=code.replace(
+      "hint.textContent='←→ 横になぞる ｜ ↓ ページは自分でスクロール';",
+      "hint.textContent=window.matchMedia('(pointer:fine)').matches?'←→ マウスを左右に動かす ｜ ↓ ホイールでスクロール':'←→ 横になぞる ｜ ↓ ページは自分でスクロール';"
+    );
     code=code.replace(
       "const secretHints=['一番上の目玉の目線を、<b>下にしてみよう！</b>','上の大きな黒目を、<b>下へぐーっと動かす</b>と……？'];",
       "const secretHints=['一番上の大きな目を、<b>タップしてみよう！</b>','上の目を<b>タップ</b>すると、黒い球が落ちてくるよ。'];"
