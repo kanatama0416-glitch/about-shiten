@@ -43,8 +43,13 @@
       "const secretHints=['一番上の大きな目を、<b>タップしてみよう！</b>','上の目を<b>タップ</b>すると、黒い球が落ちてくるよ。'];"
     );
     code=code.replace('ballVX=0;ballVY=90;','ballVX=0;ballVY=0;');
+    code=code.replace('const STUCK_DELAY=2600;','const STUCK_DELAY=850;');
     code=code.replace('ballVY=Math.min(ballVY,680);','ballVY=Math.min(ballVY,1100);');
     code=code.replace("const gateY=scrollY+innerHeight*.74;if(ballY+ballR>gateY&&gateY<floorY-70){ballY=gateY-ballR;if(ballVY>0)ballVY=0}","");
+    code=code.replace(
+      "for(const o of obstacles){if(o.b<ballY-ballR-70||o.t>ballY+ballR+70)continue;collide(o)}const g=goalHit();",
+      "for(const o of obstacles){if(o.b<ballY-ballR-70||o.t>ballY+ballR+70)continue;collide(o)}releaseIfStuck(now);const g=goalHit();"
+    );
     Function(code)();
 
     var style=document.createElement('style');
