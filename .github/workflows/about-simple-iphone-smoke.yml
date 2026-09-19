@@ -1,0 +1,89 @@
+name: About Simple iPhone Smoke
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install WebKit test browser
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps webkit
+      - name: Verify published simple iPhone game
+        run: |
+          cat > /tmp/about_simple_check.py <<'PY'
+          import time, urllib.request
+          from playwright.sync_api import sync_playwright
+
+          base='https://kanatama0416-glitch.github.io/about-shiten/'
+          html=''
+          for i in range(30):
+              try:
+                  html=urllib.request.urlopen(base+'?simplecheck='+str(i),timeout=20).read().decode('utf-8','replace')
+              except Exception:
+                  html=''
+              if '20260919-simple-game-v1' in html and 'game-simple-v1.js?v=1' in html:
+                  break
+              time.sleep(5)
+          assert '20260919-simple-game-v1' in html
+          assert 'game-simple-v1.js?v=1' in html
+
+          js=urllib.request.urlopen(base+'game-simple-v1.js?check=1',timeout=20).read().decode('utf-8','replace')
+          assert 'window.__ABOUT_SIMPLE_GAME__' in js
+          assert 'releaseIfStuck' not in js
+          assert 'scrollTo(' not in js and 'scrollBy(' not in js
+
+          with sync_playwright() as pw:
+              browser=pw.webkit.launch()
+              device=pw.devices['iPhone 13']
+              ctx=browser.new_context(**device)
+              page=ctx.new_page()
+              page.goto(base+'?simpletest=webkit-v1',wait_until='domcontentloaded',timeout=30000)
+              page.wait_for_selector('#heroEye')
+              page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
+
+              sy0=page.evaluate('window.scrollY')
+              time.sleep(1.2)
+              sy1=page.evaluate('window.scrollY')
+              assert abs(sy1-sy0)<1,(sy0,sy1)
+
+              page.locator('#heroEye').tap()
+              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              s0=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
+              time.sleep(.7)
+              s1=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
+              assert s1['ballY']>s0['ballY']+20,(s0,s1)
+
+              # deliberate horizontal swipe: ball should follow finger directly
+              viewport_x=s1['ballX']-page.evaluate('window.scrollX')
+              viewport_y=min(650,max(250,s1['ballY']-page.evaluate('window.scrollY')))
+              page.evaluate("""([x,y])=>{
+                const t=document.elementFromPoint(x,y)||document.body;
+                t.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x,clientY:y}));
+                t.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x+75,clientY:y+2}));
+                t.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x+75,clientY:y+2}));
+              }""",[viewport_x,viewport_y])
+              s2=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
+              assert s2['ballX']>s1['ballX']+45,(s1,s2)
+
+              # once released, no horizontal drift
+              x2=s2['ballX']; y2=s2['ballY']
+              time.sleep(1.1)
+              s3=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
+              assert abs(s3['ballX']-x2)<1,(x2,s3)
+              assert s3['ballY']>=y2,(y2,s3)
+
+              # no automatic page scrolling while game runs
+              sy2=page.evaluate('window.scrollY')
+              time.sleep(1.0)
+              sy3=page.evaluate('window.scrollY')
+              assert abs(sy3-sy2)<1,(sy2,sy3)
+
+              print('ABOUT_SIMPLE_WEBKIT_OK',s0,s1,s2,s3,sy0,sy1,sy2,sy3)
+              browser.close()
+          PY
+          python /tmp/about_simple_check.py
