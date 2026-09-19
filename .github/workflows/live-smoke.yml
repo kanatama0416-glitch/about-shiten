@@ -43,17 +43,20 @@ jobs:
           # About: wait until the newest public build is actually served.
           live_about=''
           for attempt in range(18):
-              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v7-'+str(attempt),timeout=20).read().decode('utf-8','replace')
-              if '20260919-iphone-stable-v7' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
+              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v8-'+str(attempt),timeout=20).read().decode('utf-8','replace')
+              if '20260919-iphone-stable-v8' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
                   break
               time.sleep(5)
-          assert '20260919-iphone-stable-v7' in live_about
+          assert '20260919-iphone-stable-v8' in live_about
           assert "const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)" in live_about
           assert "if(touchMobile){pupil.style.transform='translate(0px,0px)'}" in live_about
-          assert 'game-mobile-stable-v7.js' in live_about
+          assert 'game-mobile-stable-v8.js' in live_about
           assert 'secret-guide-desktop-v6.js' in live_about
-          assert 'game-mobile-stable-v7.js' in live_about
-          print('ABOUT_LIVE_BUILD_OK',len(live_about))
+          assert 'game-mobile-stable-v8.js' in live_about
+          live_game=urllib.request.urlopen(base+'about-shiten/game-mobile-stable-v8.js?rawcheck=1',timeout=20).read().decode('utf-8','replace')
+          assert 'if(!window.__ABOUT_MOBILE_TOUCH)releaseIfStuck(now)' in live_game
+          assert "if(window.__ABOUT_MOBILE_TOUCH)ballVX=0" in live_game
+          print('ABOUT_LIVE_BUILD_OK',len(live_about),len(live_game))
 
           # About mobile stability: emulate an iPhone-class touch viewport.
           mo=webdriver.ChromeOptions()
@@ -135,7 +138,7 @@ jobs:
           time.sleep(.22)
           x0=md.execute_script('return arguments[0].getBoundingClientRect().left',ball)
           y0=md.execute_script('return arguments[0].getBoundingClientRect().top',ball)
-          time.sleep(.55)
+          time.sleep(2.2)
           x1=md.execute_script('return arguments[0].getBoundingClientRect().left',ball)
           y1=md.execute_script('return arguments[0].getBoundingClientRect().top',ball)
           assert abs(x1-x0)<1.5,(x0,x1,y0,y1)
@@ -150,7 +153,7 @@ jobs:
               device=pw.devices['iPhone 13']
               wc=wb.new_context(**device)
               wp=wc.new_page()
-              wp.goto(base+'about-shiten/?smoke=webkit-iphone-stable-v7',wait_until='domcontentloaded',timeout=30000)
+              wp.goto(base+'about-shiten/?smoke=webkit-iphone-stable-v8',wait_until='domcontentloaded',timeout=30000)
               wp.wait_for_selector('#heroEye')
               wmain=wp.locator('main')
               wtop0=wmain.bounding_box()['y']
@@ -175,7 +178,7 @@ jobs:
               wball=wp.locator('.game-ball.on')
               time.sleep(.25)
               bx0=wball.bounding_box()['x']; by0=wball.bounding_box()['y']
-              time.sleep(.55)
+              time.sleep(2.2)
               bx1=wball.bounding_box()['x']; by1=wball.bounding_box()['y']
               assert abs(bx1-bx0)<1.5,(bx0,bx1,by0,by1)
               assert by1>by0+8,(bx0,bx1,by0,by1)
