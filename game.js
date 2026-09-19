@@ -54,7 +54,7 @@
 
     var style=document.createElement('style');
     style.textContent=`
-body:not(.game-running) .hero-eye-wrap{touch-action:none!important;cursor:pointer}
+body:not(.game-running) .hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
 body.game-running .hero-eye-wrap{touch-action:pan-y!important;cursor:pointer}
 .hero-pupil{pointer-events:auto!important;cursor:pointer}
 .view-click-guide{
