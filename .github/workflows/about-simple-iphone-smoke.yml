@@ -26,19 +26,20 @@ jobs:
                   html=urllib.request.urlopen(base+'?simplecheck='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260919-simple-game-v3' in html and 'game-simple-v3.js?v=1' in html:
+              if '20260919-simple-game-v4' in html and 'game-simple-v4.js?v=1' in html:
                   break
               time.sleep(5)
-          assert '20260919-simple-game-v3' in html
-          assert 'game-simple-v3.js?v=1' in html
+          assert '20260919-simple-game-v4' in html
+          assert 'game-simple-v4.js?v=1' in html
 
-          js=urllib.request.urlopen(base+'game-simple-v3.js?check=1',timeout=20).read().decode('utf-8','replace')
+          js=urllib.request.urlopen(base+'game-simple-v4.js?check=1',timeout=20).read().decode('utf-8','replace')
           assert 'window.__ABOUT_SIMPLE_GAME__' in js
           assert 'releaseIfStuck' not in js
           assert 'scrollTo(' not in js and 'scrollBy(' not in js
           assert 'function resolveObstacle' in js
           assert 'function textRects' in js
-          assert 'hero-game-guide' in js
+          assert 'game-ball-guide' in js
+          assert 'hero-game-guide' not in js
           assert 'ballVY=-Math.max(320,Math.abs(ballVY)*.72)' in js
 
           with sync_playwright() as pw:
@@ -46,15 +47,10 @@ jobs:
               device=pw.devices['iPhone 13']
               ctx=browser.new_context(**device)
               page=ctx.new_page()
-              page.goto(base+'?simpletest=webkit-v3',wait_until='domcontentloaded',timeout=30000)
+              page.goto(base+'?simpletest=webkit-v4',wait_until='domcontentloaded',timeout=30000)
               page.wait_for_selector('#heroEye')
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
-              guide=page.locator('.hero-game-guide')
-              assert guide.count()==1
-              gtxt=guide.inner_text()
-              assert '目玉をタップでスタート' in gtxt
-              assert '指で左右になぞる' in gtxt
-              assert 'ページをスクロール' in gtxt
+              assert page.locator('.hero-game-guide').count()==0
 
               sy0=page.evaluate('window.scrollY')
               time.sleep(1.2)
@@ -63,6 +59,13 @@ jobs:
 
               page.locator('#heroEye').tap()
               page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              guide=page.locator('.game-ball-guide')
+              assert guide.count()==1
+              page.wait_for_function("getComputedStyle(document.querySelector('.game-ball-guide')).opacity==='1'")
+              gtxt=guide.inner_text()
+              assert '指で左右になぞる' in gtxt
+              assert 'ページをスクロール' in gtxt
+              gr0=guide.bounding_box()
               s0=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
               time.sleep(.7)
               s1=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
@@ -81,6 +84,8 @@ jobs:
               }""",[viewport_x,viewport_y])
               s2=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
               assert s2['ballX']>s1['ballX']+45,(s1,s2)
+              gr1=guide.bounding_box()
+              assert gr1['x']>gr0['x']+35,(gr0,gr1)
 
               # once released, no horizontal drift
               x2=s2['ballX']; y2=s2['ballY']
@@ -107,7 +112,7 @@ jobs:
 
               # Fresh run with no steering: it must hit text and bounce, not fall straight through.
               page2=ctx.new_page()
-              page2.goto(base+'?simpletest=webkit-v3-collision',wait_until='domcontentloaded',timeout=30000)
+              page2.goto(base+'?simpletest=webkit-v4-collision',wait_until='domcontentloaded',timeout=30000)
               page2.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               page2.locator('#heroEye').tap()
               page2.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
