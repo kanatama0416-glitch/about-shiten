@@ -41,15 +41,15 @@ jobs:
           # About: wait until the newest public build is actually served.
           live_about=''
           for attempt in range(18):
-              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v5-'+str(attempt),timeout=20).read().decode('utf-8','replace')
-              if '20260919-iphone-stable-v5' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
+              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v6-'+str(attempt),timeout=20).read().decode('utf-8','replace')
+              if '20260919-iphone-stable-v6' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
                   break
               time.sleep(5)
-          assert '20260919-iphone-stable-v5' in live_about
+          assert '20260919-iphone-stable-v6' in live_about
           assert "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about
           assert "if(coarsePointer){targetX=0;targetY=0}" in live_about
-          assert 'game-mobile-stable-v5.js' in live_about
-          assert 'secret-guide-mobile-stable-v5.js' in live_about
+          assert 'game-mobile-stable-v6.js' in live_about
+          assert 'secret-guide-desktop-v6.js' in live_about
           print('ABOUT_LIVE_BUILD_OK',len(live_about))
 
           # About mobile stability: emulate an iPhone-class touch viewport.
@@ -62,36 +62,76 @@ jobs:
           })
           md=webdriver.Chrome(options=mo)
           md.set_page_load_timeout(30)
-          md.get(base+'about-shiten/?smoke=iphone-stable-v5')
+          md.get(base+'about-shiten/?smoke=iphone-stable-v6')
           MW=WebDriverWait(md,25)
           MW.until(lambda x:x.find_element(By.ID,'heroEye'))
-          assert md.execute_script("return matchMedia('(pointer:coarse)').matches") is True
+          MW.until(lambda x:x.execute_script('return window.__ABOUT_MOBILE_TOUCH===true'))
+          MW.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.view-click-guide'))==1)
+          assert md.execute_script("return /iPhone|iPad|iPod/.test(navigator.userAgent)") is True
           body=md.find_element(By.TAG_NAME,'body')
           pupil=md.find_element(By.ID,'heroPupil')
-          p0=pupil.get_attribute('style') or ''
-          sy0=md.execute_script('return window.scrollY')
-          time.sleep(2.5)
-          sy1=md.execute_script('return window.scrollY')
-          p1=pupil.get_attribute('style') or ''
-          assert 'game-running' not in (body.get_attribute('class') or '')
-          assert abs(sy1-sy0)<2,(sy0,sy1)
-          assert p0==p1,(p0,p1)
-          iris=md.find_element(By.CSS_SELECTOR,'.card-iris')
           drift=md.find_element(By.CSS_SELECTOR,'.de1')
-          assert md.execute_script("return getComputedStyle(arguments[0]).animationName",iris)=='none'
-          assert md.execute_script("return getComputedStyle(arguments[0]).animationName",drift)=='none'
+          iris=md.find_element(By.CSS_SELECTOR,'.card-iris')
+          guide=md.find_element(By.CSS_SELECTOR,'.view-click-guide')
+          guide_label=md.find_element(By.CSS_SELECTOR,'.view-click-guide .guide-label')
 
-          # Scrolling to the bottom and tapping the goal must not throw iPhone back to the top.
+          def state(el):
+              return md.execute_script("""
+                const r=arguments[0].getBoundingClientRect(),s=getComputedStyle(arguments[0]);
+                return [r.left,r.top,r.width,r.height,s.transform,s.animationName,s.marginTop,s.opacity];
+              """,el)
+
+          sy0=md.execute_script('return window.scrollY')
+          states0=[state(pupil),state(drift),state(iris),state(guide),state(guide_label)]
+          time.sleep(3.2)
+          sy1=md.execute_script('return window.scrollY')
+          states1=[state(pupil),state(drift),state(iris),state(guide),state(guide_label)]
+          assert 'game-running' not in (body.get_attribute('class') or '')
+          assert abs(sy1-sy0)<1,(sy0,sy1)
+          for a,b in zip(states0,states1):
+              for i in range(4):
+                  assert abs(a[i]-b[i])<0.5,(a,b)
+              assert a[4:]==b[4:],(a,b)
+          assert state(drift)[5]=='none',state(drift)
+          assert state(iris)[5]=='none',state(iris)
+          assert state(guide_label)[5]=='none',state(guide_label)
+          assert not md.find_elements(By.CSS_SELECTOR,'.secret-trail')
+          print('ABOUT_IPHONE_ALL_IDLE_ELEMENTS_STILL_OK',sy0,states1)
+
+          # Scrolling to the bottom and tapping the goal must not move the page by script.
           md.execute_script('window.scrollTo(0, document.documentElement.scrollHeight)')
-          time.sleep(.5)
+          time.sleep(.4)
           before_goal=md.execute_script('return window.scrollY')
           goal=md.find_element(By.ID,'goalEye')
           md.execute_script('arguments[0].click()',goal)
           time.sleep(1.4)
           after_goal=md.execute_script('return window.scrollY')
-          assert abs(after_goal-before_goal)<8,(before_goal,after_goal)
+          assert abs(after_goal-before_goal)<2,(before_goal,after_goal)
           assert 'game-running' not in (body.get_attribute('class') or '')
-          print('ABOUT_IPHONE_IDLE_STABLE_OK',before_goal,after_goal,p1)
+          print('ABOUT_IPHONE_GOAL_NO_AUTO_SCROLL_OK',before_goal,after_goal)
+
+          # Return to top. A deliberate touch tap on the black pupil starts the game.
+          md.execute_script('window.scrollTo(0,0)')
+          time.sleep(.3)
+          pupil=md.find_element(By.ID,'heroPupil')
+          r=md.execute_script('return arguments[0].getBoundingClientRect()',pupil)
+          cx=r['left']+r['width']/2; cy=r['top']+r['height']/2
+          md.execute_script("""
+            const el=arguments[0],x=arguments[1],y=arguments[2];
+            el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:7,clientX:x,clientY:y,isPrimary:true}));
+            el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:7,clientX:x,clientY:y,isPrimary:true}));
+          """,pupil,cx,cy)
+          MW.until(lambda x:'game-running' in (x.find_element(By.TAG_NAME,'body').get_attribute('class') or ''))
+          ball=MW.until(lambda x:x.find_element(By.CSS_SELECTOR,'.game-ball.on'))
+          time.sleep(.22)
+          x0=md.execute_script('return arguments[0].getBoundingClientRect().left',ball)
+          y0=md.execute_script('return arguments[0].getBoundingClientRect().top',ball)
+          time.sleep(.55)
+          x1=md.execute_script('return arguments[0].getBoundingClientRect().left',ball)
+          y1=md.execute_script('return arguments[0].getBoundingClientRect().top',ball)
+          assert abs(x1-x0)<1.5,(x0,x1,y0,y1)
+          assert y1>y0+8,(x0,x1,y0,y1)
+          print('ABOUT_IPHONE_GAME_NO_AUTO_HORIZONTAL_DRIFT_OK',x0,x1,y0,y1)
           md.quit()
 
           # About: confirm actual acceleration and no invisible 74% gate.
