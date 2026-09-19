@@ -88,6 +88,26 @@ jobs:
               assert abs(sy3-sy2)<1,(sy2,sy3)
 
               print('ABOUT_SIMPLE_WEBKIT_OK',s0,s1,s2,s3,sy0,sy1,sy2,sy3)
+
+              # Fresh run with no steering: it must hit text and bounce, not fall straight through.
+              page2=ctx.new_page()
+              page2.goto(base+'?simpletest=webkit-v2-collision',wait_until='domcontentloaded',timeout=30000)
+              page2.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
+              page2.locator('#heroEye').tap()
+              page2.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              velocities=[]
+              positions=[]
+              for _ in range(120):
+                  st=page2.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
+                  velocities.append(st['ballVY'])
+                  positions.append(st['ballY'])
+                  if st['ballVY'] < -50:
+                      break
+                  time.sleep(.05)
+              assert any(v < -50 for v in velocities),(velocities[-20:],positions[-20:])
+              assert max(positions)-min(positions)>40,(min(positions),max(positions))
+              print('ABOUT_SIMPLE_TEXT_COLLISION_OK',min(velocities),min(positions),max(positions))
+              page2.close()
               browser.close()
           PY
           python /tmp/about_simple_check.py
