@@ -26,23 +26,25 @@ jobs:
                   html=urllib.request.urlopen(base+'?simplecheck='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260919-simple-game-v1' in html and 'game-simple-v1.js?v=1' in html:
+              if '20260919-simple-game-v2' in html and 'game-simple-v2.js?v=1' in html:
                   break
               time.sleep(5)
-          assert '20260919-simple-game-v1' in html
-          assert 'game-simple-v1.js?v=1' in html
+          assert '20260919-simple-game-v2' in html
+          assert 'game-simple-v2.js?v=1' in html
 
-          js=urllib.request.urlopen(base+'game-simple-v1.js?check=1',timeout=20).read().decode('utf-8','replace')
+          js=urllib.request.urlopen(base+'game-simple-v2.js?check=1',timeout=20).read().decode('utf-8','replace')
           assert 'window.__ABOUT_SIMPLE_GAME__' in js
           assert 'releaseIfStuck' not in js
           assert 'scrollTo(' not in js and 'scrollBy(' not in js
+          assert 'function resolveObstacle' in js
+          assert 'function textRects' in js
 
           with sync_playwright() as pw:
               browser=pw.webkit.launch()
               device=pw.devices['iPhone 13']
               ctx=browser.new_context(**device)
               page=ctx.new_page()
-              page.goto(base+'?simpletest=webkit-v1',wait_until='domcontentloaded',timeout=30000)
+              page.goto(base+'?simpletest=webkit-v2',wait_until='domcontentloaded',timeout=30000)
               page.wait_for_selector('#heroEye')
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
 
@@ -57,6 +59,8 @@ jobs:
               time.sleep(.7)
               s1=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
               assert s1['ballY']>s0['ballY']+20,(s0,s1)
+              assert s1['obstacles']>10,s1
+              assert s1['checkpoints']>=5,s1
 
               # deliberate horizontal swipe: ball should follow finger directly
               viewport_x=s1['ballX']-page.evaluate('window.scrollX')
