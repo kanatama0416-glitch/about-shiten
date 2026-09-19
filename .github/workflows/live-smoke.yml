@@ -48,8 +48,8 @@ jobs:
                   break
               time.sleep(5)
           assert '20260919-iphone-stable-v7' in live_about
-          assert "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about
-          assert "if(coarsePointer){targetX=0;targetY=0}" in live_about
+          assert "const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)" in live_about
+          assert "if(touchMobile){pupil.style.transform='translate(0px,0px)'}" in live_about
           assert 'game-mobile-stable-v7.js' in live_about
           assert 'secret-guide-desktop-v6.js' in live_about
           assert 'game-mobile-stable-v7.js' in live_about
