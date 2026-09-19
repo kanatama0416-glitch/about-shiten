@@ -26,13 +26,13 @@ jobs:
                   html=urllib.request.urlopen(base+'?simplecheck='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260919-simple-game-v4' in html and 'game-simple-v4.js?v=1' in html:
+              if '20260919-simple-game-v5' in html and 'game-simple-v5.js?v=1' in html:
                   break
               time.sleep(5)
-          assert '20260919-simple-game-v4' in html
-          assert 'game-simple-v4.js?v=1' in html
+          assert '20260919-simple-game-v5' in html
+          assert 'game-simple-v5.js?v=1' in html
 
-          js=urllib.request.urlopen(base+'game-simple-v4.js?check=1',timeout=20).read().decode('utf-8','replace')
+          js=urllib.request.urlopen(base+'game-simple-v5.js?check=1',timeout=20).read().decode('utf-8','replace')
           assert 'window.__ABOUT_SIMPLE_GAME__' in js
           assert 'releaseIfStuck' not in js
           assert 'scrollTo(' not in js and 'scrollBy(' not in js
@@ -40,6 +40,8 @@ jobs:
           assert 'function textRects' in js
           assert 'game-ball-guide' in js
           assert 'hero-game-guide' not in js
+          assert 'sec-unit' in js
+          assert 'font-size:13px' in js
           assert 'ballVY=-Math.max(320,Math.abs(ballVY)*.72)' in js
 
           with sync_playwright() as pw:
@@ -47,7 +49,7 @@ jobs:
               device=pw.devices['iPhone 13']
               ctx=browser.new_context(**device)
               page=ctx.new_page()
-              page.goto(base+'?simpletest=webkit-v4',wait_until='domcontentloaded',timeout=30000)
+              page.goto(base+'?simpletest=webkit-v5',wait_until='domcontentloaded',timeout=30000)
               page.wait_for_selector('#heroEye')
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               assert page.locator('.hero-game-guide').count()==0
@@ -112,7 +114,7 @@ jobs:
 
               # Fresh run with no steering: it must hit text and bounce, not fall straight through.
               page2=ctx.new_page()
-              page2.goto(base+'?simpletest=webkit-v4-collision',wait_until='domcontentloaded',timeout=30000)
+              page2.goto(base+'?simpletest=webkit-v5-collision',wait_until='domcontentloaded',timeout=30000)
               page2.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               page2.locator('#heroEye').tap()
               page2.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
