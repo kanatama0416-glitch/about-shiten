@@ -38,6 +38,18 @@ jobs:
           d.set_page_load_timeout(30)
           W=WebDriverWait(d,25)
 
+          # About: wait until the newest public build is actually served.
+          live_about=''
+          for attempt in range(18):
+              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v4-'+str(attempt),timeout=20).read().decode('utf-8','replace')
+              if '20260919-iphone-stable-v4' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
+                  break
+              time.sleep(5)
+          assert '20260919-iphone-stable-v4' in live_about
+          assert "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about
+          assert "if(coarsePointer){targetX=0;targetY=0}" in live_about
+          print('ABOUT_LIVE_BUILD_OK',len(live_about))
+
           # About: confirm actual acceleration and no invisible 74% gate.
           d.get(base+'about-shiten/?smoke=freefall-final2')
           hero=W.until(lambda x:x.find_element(By.ID,'heroEye'))
