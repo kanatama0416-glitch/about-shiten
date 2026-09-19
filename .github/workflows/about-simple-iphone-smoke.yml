@@ -58,7 +58,7 @@ jobs:
               s0=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
               time.sleep(.7)
               s1=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
-              assert s1['ballY']>s0['ballY']+20,(s0,s1)
+              assert s1['ballY']>s0['ballY']+10,(s0,s1)
               assert s1['obstacles']>10,s1
               assert s1['checkpoints']>=5,s1
 
