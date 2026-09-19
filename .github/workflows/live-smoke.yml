@@ -68,7 +68,7 @@ jobs:
           })
           md=webdriver.Chrome(options=mo)
           md.set_page_load_timeout(30)
-          md.get(base+'about-shiten/?smoke=iphone-stable-v7')
+          md.get(base+'about-shiten/?smoke=iphone-stable-v8')
           MW=WebDriverWait(md,25)
           MW.until(lambda x:x.find_element(By.ID,'heroEye'))
           main_el=md.find_element(By.TAG_NAME,'main')
@@ -188,7 +188,7 @@ jobs:
           # About: confirm actual acceleration and no invisible 74% gate.
           d.get(base+'about-shiten/?smoke=freefall-final2')
           hero=W.until(lambda x:x.find_element(By.ID,'heroEye'))
-          ActionChains(d).move_to_element(hero).click().perform()
+          d.execute_script('arguments[0].click()',hero)
           W.until(lambda x:'game-running' in (x.find_element(By.TAG_NAME,'body').get_attribute('class') or ''))
           ball=d.find_element(By.CSS_SELECTOR,'.game-ball')
           time.sleep(.20)
