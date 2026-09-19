@@ -41,14 +41,58 @@ jobs:
           # About: wait until the newest public build is actually served.
           live_about=''
           for attempt in range(18):
-              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v4-'+str(attempt),timeout=20).read().decode('utf-8','replace')
-              if '20260919-iphone-stable-v4' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
+              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v5-'+str(attempt),timeout=20).read().decode('utf-8','replace')
+              if '20260919-iphone-stable-v5' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
                   break
               time.sleep(5)
-          assert '20260919-iphone-stable-v4' in live_about
+          assert '20260919-iphone-stable-v5' in live_about
           assert "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about
           assert "if(coarsePointer){targetX=0;targetY=0}" in live_about
+          assert 'game-mobile-stable-v5.js' in live_about
+          assert 'secret-guide-mobile-stable-v5.js' in live_about
           print('ABOUT_LIVE_BUILD_OK',len(live_about))
+
+          # About mobile stability: emulate an iPhone-class touch viewport.
+          mo=webdriver.ChromeOptions()
+          for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage']:
+              mo.add_argument(a)
+          mo.add_experimental_option('mobileEmulation',{
+              'deviceMetrics':{'width':390,'height':844,'pixelRatio':3.0,'mobile':True,'touch':True},
+              'userAgent':'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1'
+          })
+          md=webdriver.Chrome(options=mo)
+          md.set_page_load_timeout(30)
+          md.get(base+'about-shiten/?smoke=iphone-stable-v5')
+          MW=WebDriverWait(md,25)
+          MW.until(lambda x:x.find_element(By.ID,'heroEye'))
+          assert md.execute_script("return matchMedia('(pointer:coarse)').matches") is True
+          body=md.find_element(By.TAG_NAME,'body')
+          pupil=md.find_element(By.ID,'heroPupil')
+          p0=pupil.get_attribute('style') or ''
+          sy0=md.execute_script('return window.scrollY')
+          time.sleep(2.5)
+          sy1=md.execute_script('return window.scrollY')
+          p1=pupil.get_attribute('style') or ''
+          assert 'game-running' not in (body.get_attribute('class') or '')
+          assert abs(sy1-sy0)<2,(sy0,sy1)
+          assert p0==p1,(p0,p1)
+          iris=md.find_element(By.CSS_SELECTOR,'.card-iris')
+          drift=md.find_element(By.CSS_SELECTOR,'.de1')
+          assert md.execute_script("return getComputedStyle(arguments[0]).animationName",iris)=='none'
+          assert md.execute_script("return getComputedStyle(arguments[0]).animationName",drift)=='none'
+
+          # Scrolling to the bottom and tapping the goal must not throw iPhone back to the top.
+          md.execute_script('window.scrollTo(0, document.documentElement.scrollHeight)')
+          time.sleep(.5)
+          before_goal=md.execute_script('return window.scrollY')
+          goal=md.find_element(By.ID,'goalEye')
+          md.execute_script('arguments[0].click()',goal)
+          time.sleep(1.4)
+          after_goal=md.execute_script('return window.scrollY')
+          assert abs(after_goal-before_goal)<8,(before_goal,after_goal)
+          assert 'game-running' not in (body.get_attribute('class') or '')
+          print('ABOUT_IPHONE_IDLE_STABLE_OK',before_goal,after_goal,p1)
+          md.quit()
 
           # About: confirm actual acceleration and no invisible 74% gate.
           d.get(base+'about-shiten/?smoke=freefall-final2')
