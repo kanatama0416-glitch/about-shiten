@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install browser dependency
-        run: python -m pip install --disable-pip-version-check selenium
+        run: |
+          python -m pip install --disable-pip-version-check selenium playwright
+          python -m playwright install --with-deps webkit
       - name: Verify live pages
         run: |
           sleep 20
@@ -41,15 +43,16 @@ jobs:
           # About: wait until the newest public build is actually served.
           live_about=''
           for attempt in range(18):
-              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v6-'+str(attempt),timeout=20).read().decode('utf-8','replace')
-              if '20260919-iphone-stable-v6' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
+              live_about=urllib.request.urlopen(base+'about-shiten/?buildcheck=20260919-iphone-stable-v7-'+str(attempt),timeout=20).read().decode('utf-8','replace')
+              if '20260919-iphone-stable-v7' in live_about and "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about:
                   break
               time.sleep(5)
-          assert '20260919-iphone-stable-v6' in live_about
+          assert '20260919-iphone-stable-v7' in live_about
           assert "coarsePointer=window.matchMedia('(pointer:coarse)').matches" in live_about
           assert "if(coarsePointer){targetX=0;targetY=0}" in live_about
-          assert 'game-mobile-stable-v6.js' in live_about
+          assert 'game-mobile-stable-v7.js' in live_about
           assert 'secret-guide-desktop-v6.js' in live_about
+          assert 'game-mobile-stable-v7.js' in live_about
           print('ABOUT_LIVE_BUILD_OK',len(live_about))
 
           # About mobile stability: emulate an iPhone-class touch viewport.
@@ -62,9 +65,15 @@ jobs:
           })
           md=webdriver.Chrome(options=mo)
           md.set_page_load_timeout(30)
-          md.get(base+'about-shiten/?smoke=iphone-stable-v6')
+          md.get(base+'about-shiten/?smoke=iphone-stable-v7')
           MW=WebDriverWait(md,25)
           MW.until(lambda x:x.find_element(By.ID,'heroEye'))
+          main_el=md.find_element(By.TAG_NAME,'main')
+          main_top0=md.execute_script('return arguments[0].getBoundingClientRect().top',main_el)
+          time.sleep(2.8)
+          main_top1=md.execute_script('return arguments[0].getBoundingClientRect().top',main_el)
+          assert abs(main_top1-main_top0)<0.5,(main_top0,main_top1)
+          assert not md.find_elements(By.CSS_SELECTOR,'.test-page-notice')
           MW.until(lambda x:x.execute_script('return window.__ABOUT_MOBILE_TOUCH===true'))
           MW.until(lambda x:len(x.find_elements(By.CSS_SELECTOR,'.view-click-guide'))==1)
           assert md.execute_script("return /iPhone|iPad|iPod/.test(navigator.userAgent)") is True
@@ -96,7 +105,7 @@ jobs:
           assert state(iris)[5]=='none',state(iris)
           assert state(guide_label)[5]=='none',state(guide_label)
           assert not md.find_elements(By.CSS_SELECTOR,'.secret-trail')
-          print('ABOUT_IPHONE_ALL_IDLE_ELEMENTS_STILL_OK',sy0,states1)
+          print('ABOUT_IPHONE_ALL_IDLE_ELEMENTS_STILL_OK',sy0,states1,'MAIN_TOP',main_top0,main_top1)
 
           # Scrolling to the bottom and tapping the goal must not move the page by script.
           md.execute_script('window.scrollTo(0, document.documentElement.scrollHeight)')
@@ -133,6 +142,45 @@ jobs:
           assert y1>y0+8,(x0,x1,y0,y1)
           print('ABOUT_IPHONE_GAME_NO_AUTO_HORIZONTAL_DRIFT_OK',x0,x1,y0,y1)
           md.quit()
+
+          # Safari/WebKit verification against the public URL.
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as pw:
+              wb=pw.webkit.launch()
+              device=pw.devices['iPhone 13']
+              wc=wb.new_context(**device)
+              wp=wc.new_page()
+              wp.goto(base+'about-shiten/?smoke=webkit-iphone-stable-v7',wait_until='domcontentloaded',timeout=30000)
+              wp.wait_for_selector('#heroEye')
+              wmain=wp.locator('main')
+              wtop0=wmain.bounding_box()['y']
+              wsk0=wp.evaluate('window.scrollY')
+              time.sleep(3.2)
+              wtop1=wmain.bounding_box()['y']
+              wsk1=wp.evaluate('window.scrollY')
+              assert abs(wtop1-wtop0)<0.5,(wtop0,wtop1)
+              assert abs(wsk1-wsk0)<1,(wsk0,wsk1)
+              assert wp.locator('.test-page-notice').count()==0
+              assert wp.locator('.secret-trail').count()==0
+              wp.wait_for_selector('.view-click-guide')
+              g0=wp.locator('.view-click-guide').bounding_box()
+              gt0=wp.locator('.view-click-guide .guide-label').evaluate("e=>getComputedStyle(e).transform")
+              time.sleep(2.4)
+              g1=wp.locator('.view-click-guide').bounding_box()
+              gt1=wp.locator('.view-click-guide .guide-label').evaluate("e=>getComputedStyle(e).transform")
+              assert abs(g1['x']-g0['x'])<0.5 and abs(g1['y']-g0['y'])<0.5,(g0,g1)
+              assert gt0==gt1,(gt0,gt1)
+              wp.locator('#heroPupil').tap()
+              wp.wait_for_function("document.body.classList.contains('game-running')")
+              wball=wp.locator('.game-ball.on')
+              time.sleep(.25)
+              bx0=wball.bounding_box()['x']; by0=wball.bounding_box()['y']
+              time.sleep(.55)
+              bx1=wball.bounding_box()['x']; by1=wball.bounding_box()['y']
+              assert abs(bx1-bx0)<1.5,(bx0,bx1,by0,by1)
+              assert by1>by0+8,(bx0,bx1,by0,by1)
+              print('ABOUT_WEBKIT_IPHONE_PUBLIC_OK',wtop0,wtop1,g0,g1,bx0,bx1,by0,by1)
+              wb.close()
 
           # About: confirm actual acceleration and no invisible 74% gate.
           d.get(base+'about-shiten/?smoke=freefall-final2')
