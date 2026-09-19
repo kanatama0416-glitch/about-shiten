@@ -22,12 +22,20 @@
       "function dragEnd(e){if(!gesture||gameRunning||(dragPointer!==null&&e.pointerId!==dragPointer))return;gesture=false;dragPointer=null;try{eye.releasePointerCapture(e.pointerId)}catch(_){}pupil.classList.remove('drop-ready');if(maxDown>=DROP_DISTANCE)startDropGame()}"
     );
     code=code.replace(
+      "function dragStart(e){if(gameRunning)return;gesture=true;dragPointer=e.pointerId;startY=e.clientY;maxDown=0;try{eye.setPointerCapture(e.pointerId)}catch(_){}}",
+      "function dragStart(e){if(gameRunning||e.pointerType==='touch')return;gesture=true;dragPointer=e.pointerId;startY=e.clientY;maxDown=0;try{eye.setPointerCapture(e.pointerId)}catch(_){}}"
+    );
+    code=code.replace(
       "eye.addEventListener('pointerup',dragEnd);",
-      "eye.addEventListener('pointerup',dragEnd);eye.addEventListener('click',function(){if(!gameRunning)startDropGame()});"
+      "eye.addEventListener('pointerup',dragEnd);let heroTapX=0,heroTapY=0,heroTapAt=0;eye.addEventListener('pointerdown',function(e){if(e.pointerType==='touch'){heroTapX=e.clientX;heroTapY=e.clientY;heroTapAt=performance.now()}},{passive:true});eye.addEventListener('pointerup',function(e){if(e.pointerType==='touch'&&!gameRunning&&heroTapAt&&performance.now()-heroTapAt<500&&Math.hypot(e.clientX-heroTapX,e.clientY-heroTapY)<10)startDropGame();heroTapAt=0},{passive:true});eye.addEventListener('pointercancel',function(){heroTapAt=0},{passive:true});eye.addEventListener('click',function(){if(!window.matchMedia('(pointer:coarse)').matches&&!gameRunning)startDropGame()});"
+    );
+    code=code.replace(
+      "window.addEventListener('pointerdown',e=>{if(!gameRunning)return;if(e.target.closest&&e.target.closest('a'))return;steer=true;steerX=e.clientX+scrollX;pointerStartX=e.clientX;pointerStartY=e.clientY;markInteraction()},{passive:true});",
+      "window.addEventListener('pointerdown',e=>{if(!gameRunning)return;if(e.target.closest&&e.target.closest('a'))return;pointerStartX=e.clientX;pointerStartY=e.clientY;if(e.pointerType==='mouse'){steer=true;steerX=e.clientX+scrollX;markInteraction()}else{steer=false}},{passive:true});"
     );
     code=code.replace(
       "window.addEventListener('pointermove',e=>{if(!gameRunning||!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8)manualScroll=true;else steerX=e.clientX+scrollX;markInteraction()},{passive:true});",
-      "window.addEventListener('pointermove',e=>{if(!gameRunning)return;if(e.pointerType==='mouse'){steer=true;steerX=e.clientX+scrollX;markInteraction();return}if(!steer)return;const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+8){manualScroll=true;steer=false}else steerX=e.clientX+scrollX;markInteraction()},{passive:true});"
+      "window.addEventListener('pointermove',e=>{if(!gameRunning)return;if(e.pointerType==='mouse'){steer=true;steerX=e.clientX+scrollX;markInteraction();return}const dx=e.clientX-pointerStartX,dy=e.clientY-pointerStartY;if(Math.abs(dy)>Math.abs(dx)+6){manualScroll=true;steer=false;return}if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)+6){steer=true;steerX=e.clientX+scrollX;markInteraction()}},{passive:true});"
     );
     code=code.replace("touch-action:manipulation;cursor:pointer","touch-action:pan-y;cursor:pointer");
     code=code.replace(
