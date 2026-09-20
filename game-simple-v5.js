@@ -16,10 +16,9 @@ style.textContent=`
 .game-ball-dot{width:100%;height:100%;border-radius:50%;background:var(--ink)}
 body.game-running{touch-action:pan-y;overscroll-behavior-y:auto}
 body.game-running .hero-pupil{opacity:0}
-.goal-eye.game-target{animation:goalWake .72s cubic-bezier(.2,.85,.25,1.1) 1}
-.goal-eye.game-target .goal-pupil{opacity:1!important;will-change:transform,width,height;transition:transform .12s ease,width .18s ease,height .18s ease}
+.goal-eye.game-target .goal-pupil{opacity:1!important;will-change:transform,width,height,box-shadow;transition:transform .12s ease,width .18s ease,height .18s ease;animation:goalPupilWake .72s ease 1}
 .goal-eye.game-target.is-near .goal-pupil{width:68px;height:68px}
-@keyframes goalWake{0%{transform:scale(1)}45%{transform:scale(1.065)}100%{transform:scale(1)}}
+@keyframes goalPupilWake{0%,100%{box-shadow:0 0 0 0 var(--paper)}45%{box-shadow:0 0 0 9px var(--paper),0 0 0 12px var(--ink)}}
 .game-ball-guide{position:fixed;left:0;top:0;z-index:10000;pointer-events:none;opacity:0;transition:opacity .16s ease;will-change:transform}
 .game-ball-guide.show{opacity:1}
 .game-ball-guide .bubble{position:relative;padding:8px 10px 7px;border:2px solid var(--ink);border-radius:12px;background:rgba(244,241,233,.96);box-shadow:3px 3px 0 var(--yellow);font:850 10px/1.45 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;white-space:nowrap}
