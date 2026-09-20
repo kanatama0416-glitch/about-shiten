@@ -77,6 +77,12 @@ jobs:
               assert transform_after_drag not in ('none','matrix(1, 0, 0, 1, 0, 0)'),transform_after_drag
               assert page.evaluate("document.body.classList.contains('game-running')") is False
 
+              # Reload so the existing game regression checks start from the normal centered pupil.
+              page.reload(wait_until='domcontentloaded')
+              page.wait_for_selector('#heroEye')
+              page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
+              assert page.locator('#heroPupilLabel').text_content()=='クリック！'
+
               sy0=page.evaluate('window.scrollY')
               time.sleep(1.2)
               sy1=page.evaluate('window.scrollY')
