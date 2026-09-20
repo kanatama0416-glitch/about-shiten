@@ -26,14 +26,14 @@ jobs:
                   html=urllib.request.urlopen(base+'?organic='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260920-organic-eye-cue-v3' in html:
+              if '20260920-personal-best-v1' in html:
                   break
               time.sleep(5)
-          assert '20260920-organic-eye-cue-v3' in html
+          assert '20260920-personal-best-v1' in html
           assert 'hero-click-guide' not in html
           assert 'hero-click-speech' not in html
           assert 'タップ！' not in html
-          assert 'game-simple-v5.js?v=1' in html
+          assert 'game-simple-v5.js?v=2' in html
           assert "startFromDownGaze" in html
           assert "game.start()" in html
 
@@ -42,6 +42,9 @@ jobs:
           assert 'function resolveObstacle' in js
           assert 'function textRects' in js
           assert 'ballVY=-Math.max(320,Math.abs(ballVY)*.72)' in js
+          assert "shiten-about-personal-best-v1" in js
+          assert 'function readBestTime' in js and 'function writeBestTime' in js
+          assert 'NEW BEST!' in js and 'best-row' in js
           assert 'releaseIfStuck' not in js
           assert 'scrollTo(' not in js and 'scrollBy(' not in js
 
@@ -117,13 +120,49 @@ jobs:
               assert sb['ballVY']<-250,sb
               page.close()
 
-              # 4) Tap start remains available.
+              # 4) Tap start remains available, and the first clear stores a personal best.
               page=ctx.new_page()
-              page.goto(base+'?test=tap-start',wait_until='domcontentloaded',timeout=30000)
+              page.goto(base+'?test=tap-start-best',wait_until='domcontentloaded',timeout=30000)
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
+              page.evaluate("localStorage.removeItem('shiten-about-personal-best-v1')")
               page.locator('#heroPupil').tap()
               page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
-              print('ABOUT_ORGANIC_HERO_AND_GAME_OK')
+              st=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
+              page.evaluate("""s=>{
+                const g=document.getElementById('goalEye');
+                g.style.position='fixed';g.style.width='300px';g.style.height='300px';
+                g.style.left=(s.ballX-window.scrollX-150)+'px';
+                g.style.top=(s.ballY-window.scrollY-150)+'px';
+              }""",st)
+              page.wait_for_selector('.game-result.show',timeout=5000)
+              result_text=page.locator('.game-result').inner_text()
+              assert 'BEST' in result_text and 'NEW BEST!' in result_text,result_text
+              stored=page.evaluate("Number(localStorage.getItem('shiten-about-personal-best-v1'))")
+              assert stored>0,stored
+              page.close()
+
+              # 5) An existing faster best is preserved and displayed after a slower clear.
+              page=ctx.new_page()
+              page.goto(base+'?test=best-persists',wait_until='domcontentloaded',timeout=30000)
+              page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
+              page.evaluate("localStorage.setItem('shiten-about-personal-best-v1','0.01')")
+              page.locator('#heroPupil').tap()
+              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              time.sleep(.08)
+              st=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
+              page.evaluate("""s=>{
+                const g=document.getElementById('goalEye');
+                g.style.position='fixed';g.style.width='300px';g.style.height='300px';
+                g.style.left=(s.ballX-window.scrollX-150)+'px';
+                g.style.top=(s.ballY-window.scrollY-150)+'px';
+              }""",st)
+              page.wait_for_selector('.game-result.show',timeout=5000)
+              result_text=page.locator('.game-result').inner_text()
+              assert 'BEST' in result_text and '0.01' in result_text,result_text
+              assert 'NEW BEST!' not in result_text,result_text
+              stored=page.evaluate("localStorage.getItem('shiten-about-personal-best-v1')")
+              assert stored=='0.01',stored
+              print('ABOUT_PERSONAL_BEST_AND_GAME_OK')
               page.close()
               browser.close()
           PY
