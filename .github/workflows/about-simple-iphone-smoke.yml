@@ -26,10 +26,10 @@ jobs:
                   html=urllib.request.urlopen(base+'?organic='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260920-goal-cue-v1' in html:
+              if '20260920-goal-intro-v1' in html:
                   break
               time.sleep(5)
-          assert '20260920-goal-cue-v1' in html
+          assert '20260920-goal-intro-v1' in html
           assert 'hero-click-guide' not in html
           assert 'hero-click-speech' not in html
           assert 'タップ！' not in html
@@ -88,9 +88,9 @@ jobs:
               assert page.evaluate("document.body.classList.contains('game-running')") is False
               page.close()
 
-              # 3) Looking/dragging downward starts the existing game.
+              # 3) Looking/dragging downward previews the goal, returns to top, then starts the existing game.
               page=ctx.new_page()
-              page.goto(base+'?test=down-gaze',wait_until='domcontentloaded',timeout=30000)
+              page.goto(base+'?test=down-gaze-intro',wait_until='domcontentloaded',timeout=30000)
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               pupil=page.locator('#heroPupil')
               goal=page.locator('#goalEye')
@@ -103,7 +103,12 @@ jobs:
                 el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:72,isPrimary:true,clientX:x,clientY:y}));
                 el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:72,isPrimary:true,clientX:x,clientY:y+180}));
               }""",[cx,cy])
-              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              time.sleep(.12)
+              assert page.evaluate("window.__ABOUT_SIMPLE_GAME__.getState().running") is False
+              page.wait_for_function("window.scrollY>200",timeout=2500)
+              page.wait_for_function("document.getElementById('goalEye').classList.contains('prestart-heartbeat')",timeout=2500)
+              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true",timeout=5000)
+              assert abs(page.evaluate("window.scrollY"))<3,page.evaluate("window.scrollY")
               page.wait_for_function("document.getElementById('goalEye').classList.contains('game-target')")
               goal_after=goal.bounding_box(); assert goal_after
               assert abs(goal_after['width']-goal_before['width'])<0.5,(goal_before,goal_after)
@@ -142,7 +147,12 @@ jobs:
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               page.evaluate("localStorage.removeItem('shiten-about-personal-best-v1')")
               page.locator('#heroPupil').tap()
-              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              time.sleep(.12)
+              assert page.evaluate("window.__ABOUT_SIMPLE_GAME__.getState().running") is False
+              page.wait_for_function("window.scrollY>200",timeout=2500)
+              page.wait_for_function("document.getElementById('goalEye').classList.contains('prestart-heartbeat')",timeout=2500)
+              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true",timeout=5000)
+              assert abs(page.evaluate("window.scrollY"))<3,page.evaluate("window.scrollY")
               st=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
               page.evaluate("""s=>{
                 const g=document.getElementById('goalEye');
@@ -163,7 +173,11 @@ jobs:
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               page.evaluate("localStorage.setItem('shiten-about-personal-best-v1','0.01')")
               page.locator('#heroPupil').tap()
-              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              time.sleep(.12)
+              assert page.evaluate("window.__ABOUT_SIMPLE_GAME__.getState().running") is False
+              page.wait_for_function("window.scrollY>200",timeout=2500)
+              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true",timeout=5000)
+              assert abs(page.evaluate("window.scrollY"))<3,page.evaluate("window.scrollY")
               time.sleep(.08)
               st=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
               page.evaluate("""s=>{
