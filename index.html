@@ -22,12 +22,12 @@ const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform===
 const touchMobile=isIOS||(navigator.maxTouchPoints>0&&window.matchMedia('(hover:none)').matches);
 let dragging=false,touched=touchMobile,targetX=0,targetY=0,currentX=0,currentY=0,lastTime=performance.now();
 function setTargetFromPointer(x,y){const r=eye.getBoundingClientRect(),nx=(x-(r.left+r.width/2))/(r.width/2),ny=(y-(r.top+r.height/2))/(r.height/2);targetX=Math.max(-145,Math.min(145,nx*175));targetY=Math.max(-72,Math.min(72,ny*92))}
-eye.addEventListener('pointerdown',e=>{if(touchMobile||e.pointerType==='touch')return;dragging=true;touched=true;eye.setPointerCapture?.(e.pointerId);setTargetFromPointer(e.clientX,e.clientY)});
+eye.addEventListener('pointerdown',e=>{dragging=true;touched=true;eye.setPointerCapture?.(e.pointerId);setTargetFromPointer(e.clientX,e.clientY)});
 eye.addEventListener('pointermove',e=>{if(dragging)setTargetFromPointer(e.clientX,e.clientY)});
 function stopDrag(e){if(!dragging)return;dragging=false;eye.releasePointerCapture?.(e.pointerId)}
 eye.addEventListener('pointerup',stopDrag);eye.addEventListener('pointercancel',stopDrag);
 function animate(now){const dt=Math.min(34,Math.max(1,now-lastTime));lastTime=now;if(!touched){const t=now/1000;targetX=Math.sin(t*.70)*43+Math.sin(t*.27)*11;targetY=Math.sin(t*.48+.7)*14}const follow=1-Math.exp(-dt/70);currentX+=(targetX-currentX)*follow;currentY+=(targetY-currentY)*follow;pupil.style.transform=`translate(${currentX.toFixed(2)}px,${currentY.toFixed(2)}px)`;requestAnimationFrame(animate)}
-if(touchMobile){pupil.style.transform='translate(0px,0px)'}else{requestAnimationFrame(animate)}
+requestAnimationFrame(animate)
 </script>
 <script src="game-simple-v5.js?v=1"></script>
 <script src="secret-guide-desktop-v6.js?v=1"></script>
