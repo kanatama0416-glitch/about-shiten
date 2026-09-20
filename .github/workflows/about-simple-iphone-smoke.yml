@@ -26,14 +26,14 @@ jobs:
                   html=urllib.request.urlopen(base+'?organic='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260920-personal-best-v1' in html:
+              if '20260920-goal-cue-v1' in html:
                   break
               time.sleep(5)
-          assert '20260920-personal-best-v1' in html
+          assert '20260920-goal-cue-v1' in html
           assert 'hero-click-guide' not in html
           assert 'hero-click-speech' not in html
           assert 'タップ！' not in html
-          assert 'game-simple-v5.js?v=2' in html
+          assert 'game-simple-v5.js?v=3' in html
           assert "startFromDownGaze" in html
           assert "game.start()" in html
 
@@ -45,6 +45,17 @@ jobs:
           assert "shiten-about-personal-best-v1" in js
           assert 'function readBestTime' in js and 'function writeBestTime' in js
           assert 'NEW BEST!' in js and 'best-row' in js
+          assert 'function updateGoalCue' in js
+          assert "goal.classList.add('game-target')" in js
+          assert ".goal-eye.game-target.is-near .goal-pupil{width:68px;height:68px}" in js
+          exact_goal_hit="""function goalHit(){
+  const r=goal.getBoundingClientRect();
+  const gx=r.left+r.width/2+scrollX,gy=r.top+r.height/2+scrollY;
+  const rx=Math.max(28,r.width*.30),ry=Math.max(20,r.height*.27);
+  const nx=(ballX-gx)/rx,ny=(ballY-gy)/ry;
+  return nx*nx+ny*ny<=1?{gx,gy}:null;
+}"""
+          assert exact_goal_hit in js
           assert 'releaseIfStuck' not in js
           assert 'scrollTo(' not in js and 'scrollBy(' not in js
 
@@ -87,6 +98,9 @@ jobs:
               page.goto(base+'?test=down-gaze',wait_until='domcontentloaded',timeout=30000)
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               pupil=page.locator('#heroPupil')
+              goal=page.locator('#goalEye')
+              goal_pupil=page.locator('#goalPupil')
+              goal_before=goal.bounding_box(); assert goal_before
               pr=pupil.bounding_box(); assert pr
               cx=pr['x']+pr['width']/2; cy=pr['y']+pr['height']/2
               page.evaluate("""([x,y])=>{
@@ -95,6 +109,13 @@ jobs:
                 el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:72,isPrimary:true,clientX:x,clientY:y+180}));
               }""",[cx,cy])
               page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              page.wait_for_function("document.getElementById('goalEye').classList.contains('game-target')")
+              goal_after=goal.bounding_box(); assert goal_after
+              assert abs(goal_after['width']-goal_before['width'])<0.5,(goal_before,goal_after)
+              assert abs(goal_after['height']-goal_before['height'])<0.5,(goal_before,goal_after)
+              gp_transform=goal_pupil.evaluate("e=>getComputedStyle(e).transform")
+              assert gp_transform!='none',gp_transform
+              assert float(goal_pupil.evaluate("e=>getComputedStyle(e).opacity"))>.99
               s0=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
               time.sleep(.65)
               s1=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
