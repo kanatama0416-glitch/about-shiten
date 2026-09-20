@@ -53,7 +53,7 @@ jobs:
               page.wait_for_selector('#heroEye')
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               assert page.locator('.hero-game-guide').count()==0
-              assert page.locator('#heroPupil .hero-pupil-label').inner_text()=='クリック！'
+              assert page.locator('#heroPupil .hero-pupil-label').text_content()=='クリック！'
               pupil=page.locator('#heroPupil')
               label=page.locator('#heroPupil .hero-pupil-label')
               pr0=pupil.bounding_box(); lr0=label.bounding_box()
