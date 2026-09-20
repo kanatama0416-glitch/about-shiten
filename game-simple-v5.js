@@ -23,7 +23,7 @@ body.game-running #goalPupil{opacity:0}
 .game-ball-guide .bubble:after{content:"";position:absolute;left:18px;bottom:-7px;width:10px;height:10px;background:var(--paper);border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg)}
 .game-result{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.88);z-index:10001;background:var(--paper);border:4px solid var(--ink);box-shadow:8px 8px 0 var(--pink);padding:18px 24px;text-align:center;pointer-events:none;opacity:0;transition:.22s}
 .game-result.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-.game-result strong{display:block;font:950 38px/.95 Arial,sans-serif}.game-result strong .sec-unit{font-size:13px;letter-spacing:.08em;margin-left:5px;vertical-align:baseline}.game-result small{display:block;font:900 9px/1 Arial,sans-serif;letter-spacing:.2em;margin-bottom:8px}
+.game-result strong{display:block;font:950 38px/.95 Arial,sans-serif}.game-result strong .sec-unit{font-size:13px;letter-spacing:.08em;margin-left:5px;vertical-align:baseline}.game-result small{display:block;font:900 9px/1 Arial,sans-serif;letter-spacing:.2em;margin-bottom:8px}.game-result .best-row{margin-top:12px;padding-top:10px;border-top:2px solid var(--ink);font:900 12px/1.2 Arial,sans-serif;letter-spacing:.12em}.game-result .best-row b{font-size:18px;letter-spacing:0}.game-result .new-best{display:block;margin-top:7px;font:950 10px/1 Arial,sans-serif;letter-spacing:.16em}
 .game-eye-hit{animation:gameEyeHitSimple .34s ease}@keyframes gameEyeHitSimple{50%{transform:scale(1.08)}}
 .hero-eye-wrap{touch-action:pan-y!important}
 .view-click-guide{position:absolute;z-index:20;width:max-content;pointer-events:none;opacity:0;transition:left .62s cubic-bezier(.2,.8,.2,1),top .62s cubic-bezier(.2,.8,.2,1),opacity .2s}
@@ -54,6 +54,16 @@ let running=false;
 let ballX=0,ballY=0,ballVY=0,ballR=20,last=0,floorY=0,startAt=0;
 let touchId=null,startX=0,startY=0,mode='none';
 let checkpoints=[],obstacles=[];const checkpointSizes=[30,24,20,28,22,18,26,20];let checkpointIndex=0;
+const BEST_TIME_KEY='shiten-about-personal-best-v1';
+function readBestTime(){
+  try{
+    const v=Number(localStorage.getItem(BEST_TIME_KEY));
+    return Number.isFinite(v)&&v>0?v:null;
+  }catch(_){return null}
+}
+function writeBestTime(sec){
+  try{localStorage.setItem(BEST_TIME_KEY,String(sec))}catch(_){}
+}
 
 function mainBounds(){
   const r=document.querySelector('main').getBoundingClientRect();
@@ -160,9 +170,13 @@ function finish(g){
   guide.classList.remove('show');
   ballX=g.gx;ballY=g.gy;render();
   const sec=Math.max(0,(performance.now()-startAt)/1000);
-  result.innerHTML=`<small>GOAL / CLEAR TIME</small><strong>${sec.toFixed(2)}<span class="sec-unit">SEC</span></strong>`;
+  const previousBest=readBestTime();
+  const isNewBest=previousBest===null||sec<previousBest;
+  const best=isNewBest?sec:previousBest;
+  if(isNewBest)writeBestTime(sec);
+  result.innerHTML=`<small>GOAL / CLEAR TIME</small><strong>${sec.toFixed(2)}<span class="sec-unit">SEC</span></strong><div class="best-row">BEST&nbsp; <b>${best.toFixed(2)}</b> SEC</div>${isNewBest?'<span class="new-best">NEW BEST!</span>':''}`;
   result.classList.add('show');
-  setTimeout(()=>result.classList.remove('show'),3200);
+  setTimeout(()=>result.classList.remove('show'),3600);
   setTimeout(()=>{ball.classList.remove('on');pupil.style.opacity='';goalPupil.style.opacity=''},420);
 }
 function frame(now){
