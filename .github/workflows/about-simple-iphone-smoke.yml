@@ -26,10 +26,10 @@ jobs:
                   html=urllib.request.urlopen(base+'?simplecheck='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260920-hero-click-label-v1' in html and 'game-simple-v5.js?v=1' in html:
+              if '20260920-hero-click-label-v2' in html and 'game-simple-v5.js?v=1' in html:
                   break
               time.sleep(5)
-          assert '20260920-hero-click-label-v1' in html
+          assert '20260920-hero-click-label-v2' in html
           assert 'game-simple-v5.js?v=1' in html
 
           js=urllib.request.urlopen(base+'game-simple-v5.js?check=1',timeout=20).read().decode('utf-8','replace')
@@ -53,11 +53,10 @@ jobs:
               page.wait_for_selector('#heroEye')
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
               assert page.locator('.hero-game-guide').count()==0
-              assert page.locator('#heroPupil .hero-pupil-label').text_content()=='クリック！'
+              assert page.locator('#heroPupilLabel').text_content()=='クリック！'
               pupil=page.locator('#heroPupil')
-              shape=page.locator('#heroPupil .hero-pupil-shape')
-              label=page.locator('#heroPupil .hero-pupil-label')
-              pr0=shape.bounding_box(); lr0=label.bounding_box()
+              label=page.locator('#heroPupilLabel')
+              pr0=pupil.bounding_box(); lr0=label.bounding_box()
               assert pr0 and lr0
               pcx=pr0['x']+pr0['width']/2; pcy=pr0['y']+pr0['height']/2
               lcx=lr0['x']+lr0['width']/2; lcy=lr0['y']+lr0['height']/2
