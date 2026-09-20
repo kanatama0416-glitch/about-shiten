@@ -55,11 +55,14 @@ jobs:
               assert page.locator('.hero-game-guide').count()==0
               assert page.locator('#heroPupil .hero-pupil-label').text_content()=='クリック！'
               pupil=page.locator('#heroPupil')
+              shape=page.locator('#heroPupil .hero-pupil-shape')
               label=page.locator('#heroPupil .hero-pupil-label')
-              pr0=pupil.bounding_box(); lr0=label.bounding_box()
+              pr0=shape.bounding_box(); lr0=label.bounding_box()
               assert pr0 and lr0
-              assert lr0['x']>=pr0['x'] and lr0['x']+lr0['width']<=pr0['x']+pr0['width']
-              assert lr0['y']>=pr0['y'] and lr0['y']+lr0['height']<=pr0['y']+pr0['height']
+              pcx=pr0['x']+pr0['width']/2; pcy=pr0['y']+pr0['height']/2
+              lcx=lr0['x']+lr0['width']/2; lcy=lr0['y']+lr0['height']/2
+              assert lr0['width']<pr0['width']*.9,(pr0,lr0)
+              assert abs(lcx-pcx)<4 and abs(lcy-pcy)<8,(pr0,lr0)
 
               # Touch-drag the hero pupil before the game starts. It should move freely
               # without accidentally starting the game.
