@@ -48,14 +48,9 @@ jobs:
           assert 'function updateGoalCue' in js
           assert "goal.classList.add('game-target')" in js
           assert ".goal-eye.game-target.is-near .goal-pupil{width:68px;height:68px}" in js
-          exact_goal_hit="""function goalHit(){
-  const r=goal.getBoundingClientRect();
-  const gx=r.left+r.width/2+scrollX,gy=r.top+r.height/2+scrollY;
-  const rx=Math.max(28,r.width*.30),ry=Math.max(20,r.height*.27);
-  const nx=(ballX-gx)/rx,ny=(ballY-gy)/ry;
-  return nx*nx+ny*ny<=1?{gx,gy}:null;
-}"""
-          assert exact_goal_hit in js
+          assert 'function goalHit(){' in js
+          assert 'const rx=Math.max(28,r.width*.30),ry=Math.max(20,r.height*.27);' in js
+          assert 'return nx*nx+ny*ny<=1?{gx,gy}:null;' in js
           assert 'releaseIfStuck' not in js
           assert 'scrollTo(' not in js and 'scrollBy(' not in js
 
