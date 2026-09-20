@@ -20,7 +20,7 @@
 const eye=document.getElementById('heroEye'),pupil=document.getElementById('heroPupil');
 const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const touchMobile=isIOS||(navigator.maxTouchPoints>0&&window.matchMedia('(hover:none)').matches);
-let dragging=false,touched=false,targetX=0,targetY=0,currentX=0,currentY=0,targetSX=1,targetSY=1,currentSX=1,currentSY=1,lastTime=performance.now(),idleStarted=performance.now(),idleDone=false,gazeStarted=false,introRunning=false,tapStartX=0,tapStartY=0,tapStartAt=0;
+let dragging=false,touched=false,targetX=0,targetY=0,currentX=0,currentY=0,targetSX=1,targetSY=1,currentSX=1,currentSY=1,lastTime=performance.now(),idleStarted=performance.now(),idleDone=false,gazeStarted=false,introRunning=false,tapStartX=0,tapStartY=0,tapStartAt=0,activePointerId=null;
 const goalEye=document.getElementById('goalEye');
 function setTargetFromPointer(x,y){const r=eye.getBoundingClientRect(),nx=(x-(r.left+r.width/2))/(r.width/2),ny=(y-(r.top+r.height/2))/(r.height/2);targetX=Math.max(-145,Math.min(145,nx*175));targetY=Math.max(-72,Math.min(72,ny*92))}
 function easeInOut(t){return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2}
@@ -29,7 +29,7 @@ async function beginGameIntro(){
   if(introRunning||document.body.classList.contains('game-running'))return;
   const game=window.__ABOUT_SIMPLE_GAME__;
   if(!game||typeof game.start!=='function'||!goalEye)return;
-  introRunning=true;dragging=false;eye.classList.remove('is-dragging');targetSX=1;targetSY=1;
+  introRunning=true;if(activePointerId!==null&&eye.hasPointerCapture?.(activePointerId))eye.releasePointerCapture(activePointerId);activePointerId=null;dragging=false;eye.classList.remove('is-dragging');targetSX=1;targetSY=1;
   const gr=goalEye.getBoundingClientRect();
   const goalY=gr.top+window.scrollY+gr.height/2-innerHeight*.58;
   await scrollToY(goalY,420);
@@ -42,9 +42,9 @@ async function beginGameIntro(){
   game.start();
 }
 function startFromDownGaze(){if(gazeStarted||introRunning||targetY<58)return;gazeStarted=true;beginGameIntro()}
-eye.addEventListener('pointerdown',e=>{if(document.body.classList.contains('game-running')||introRunning)return;dragging=true;touched=true;gazeStarted=false;tapStartX=e.clientX;tapStartY=e.clientY;tapStartAt=performance.now();targetSX=.93;targetSY=1.07;eye.classList.add('is-dragging');eye.setPointerCapture?.(e.pointerId);setTargetFromPointer(e.clientX,e.clientY);startFromDownGaze()});
+eye.addEventListener('pointerdown',e=>{if(document.body.classList.contains('game-running')||introRunning)return;dragging=true;touched=true;gazeStarted=false;activePointerId=e.pointerId;tapStartX=e.clientX;tapStartY=e.clientY;tapStartAt=performance.now();targetSX=.93;targetSY=1.07;eye.classList.add('is-dragging');eye.setPointerCapture?.(e.pointerId);setTargetFromPointer(e.clientX,e.clientY);startFromDownGaze()});
 eye.addEventListener('pointermove',e=>{if(!dragging||document.body.classList.contains('game-running'))return;setTargetFromPointer(e.clientX,e.clientY);startFromDownGaze()});
-function stopDrag(e){if(!dragging)return;dragging=false;targetSX=1;targetSY=1;eye.classList.remove('is-dragging');eye.releasePointerCapture?.(e.pointerId)}
+function stopDrag(e){if(!dragging){activePointerId=null;return}dragging=false;activePointerId=null;targetSX=1;targetSY=1;eye.classList.remove('is-dragging');eye.releasePointerCapture?.(e.pointerId)}
 eye.addEventListener('pointerup',e=>{const wasTap=!introRunning&&tapStartAt&&performance.now()-tapStartAt<500&&Math.hypot(e.clientX-tapStartX,e.clientY-tapStartY)<9;stopDrag(e);tapStartAt=0;if(wasTap){e.stopImmediatePropagation();e.preventDefault();beginGameIntro()}else if(introRunning){e.stopImmediatePropagation()}});
 eye.addEventListener('pointercancel',e=>{tapStartAt=0;stopDrag(e)});
 function idleCue(now){const p=now-idleStarted;if(p<1250){targetX=0;targetY=0;return}if(p<1390){targetX=0;targetY=4;targetSX=.90;targetSY=1.09;return}if(p<1630){targetX=-34;targetY=0;targetSX=1;targetSY=1;return}if(p<1870){targetX=34;targetY=-1;return}if(p<2110){targetX=0;targetY=5;targetSX=1.055;targetSY=.96;return}targetX=0;targetY=0;targetSX=1;targetSY=1;idleDone=true}
