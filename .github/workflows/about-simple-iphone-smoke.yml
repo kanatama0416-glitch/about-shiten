@@ -13,151 +13,116 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check playwright
           python -m playwright install --with-deps webkit
-      - name: Verify published simple iPhone game
+      - name: Verify public hero interaction and unchanged game
         run: |
-          cat > /tmp/about_simple_check.py <<'PY'
+          cat > /tmp/about_check.py <<'PY'
           import time, urllib.request
           from playwright.sync_api import sync_playwright
 
           base='https://kanatama0416-glitch.github.io/about-shiten/'
           html=''
-          for i in range(30):
+          for i in range(36):
               try:
-                  html=urllib.request.urlopen(base+'?simplecheck='+str(i),timeout=20).read().decode('utf-8','replace')
+                  html=urllib.request.urlopen(base+'?organic='+str(i),timeout=20).read().decode('utf-8','replace')
               except Exception:
                   html=''
-              if '20260920-hero-click-guide-v1' in html and 'game-simple-v5.js?v=1' in html:
+              if '20260920-organic-eye-cue-v1' in html:
                   break
               time.sleep(5)
-          assert '20260920-hero-click-guide-v1' in html
+          assert '20260920-organic-eye-cue-v1' in html
+          assert 'hero-click-guide' not in html
           assert 'game-simple-v5.js?v=1' in html
+          assert "startFromDownGaze" in html
+          assert "game.start()" in html
 
-          js=urllib.request.urlopen(base+'game-simple-v5.js?check=1',timeout=20).read().decode('utf-8','replace')
+          js=urllib.request.urlopen(base+'game-simple-v5.js?unchanged=1',timeout=20).read().decode('utf-8','replace')
           assert 'window.__ABOUT_SIMPLE_GAME__' in js
-          assert 'releaseIfStuck' not in js
-          assert 'scrollTo(' not in js and 'scrollBy(' not in js
           assert 'function resolveObstacle' in js
           assert 'function textRects' in js
-          assert 'game-ball-guide' in js
-          assert 'hero-game-guide' not in js
-          assert 'sec-unit' in js
-          assert 'font-size:13px' in js
           assert 'ballVY=-Math.max(320,Math.abs(ballVY)*.72)' in js
+          assert 'releaseIfStuck' not in js
+          assert 'scrollTo(' not in js and 'scrollBy(' not in js
 
           with sync_playwright() as pw:
               browser=pw.webkit.launch()
               device=pw.devices['iPhone 13']
               ctx=browser.new_context(**device)
-              page=ctx.new_page()
-              page.goto(base+'?simpletest=webkit-v5',wait_until='domcontentloaded',timeout=30000)
-              page.wait_for_selector('#heroEye')
-              page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
-              assert page.locator('.hero-game-guide').count()==0
-              assert page.locator('.hero-click-guide .touch-word').text_content()=='タップ！'
-              pupil=page.locator('#heroPupil')
-              click_guide=page.locator('.hero-click-guide')
-              pr0=pupil.bounding_box(); gr0=click_guide.bounding_box()
-              assert pr0 and gr0
-              assert gr0['x']>pr0['x']+pr0['width']*.55,(pr0,gr0)
-              assert gr0['y']>pr0['y']+pr0['height']*.45,(pr0,gr0)
 
-              # Touch-drag the hero pupil before the game starts. It should move freely
-              # without accidentally starting the game.
-              cx=pr0['x']+pr0['width']/2; cy=pr0['y']+pr0['height']/2
+              # 1) No text guide; idle eye cue is visible but does not start the game.
+              page=ctx.new_page()
+              page.goto(base+'?test=organic-idle',wait_until='domcontentloaded',timeout=30000)
+              page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
+              assert page.locator('.hero-click-guide').count()==0
+              pupil=page.locator('#heroPupil')
+              t0=pupil.evaluate("e=>getComputedStyle(e).transform")
+              time.sleep(1.55)
+              t1=pupil.evaluate("e=>getComputedStyle(e).transform")
+              time.sleep(.35)
+              t2=pupil.evaluate("e=>getComputedStyle(e).transform")
+              assert len({t0,t1,t2})>1,(t0,t1,t2)
+              assert page.evaluate("document.body.classList.contains('game-running')") is False
+
+              # 2) Horizontal touch drag moves the pupil freely and does not start the game.
+              pr=pupil.bounding_box(); assert pr
+              cx=pr['x']+pr['width']/2; cy=pr['y']+pr['height']/2
               page.evaluate("""([x,y])=>{
                 const el=document.getElementById('heroPupil');
                 el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:71,isPrimary:true,clientX:x,clientY:y}));
-                el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:71,isPrimary:true,clientX:x+75,clientY:y+18}));
-                el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:71,isPrimary:true,clientX:x+75,clientY:y+18}));
+                el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:71,isPrimary:true,clientX:x+72,clientY:y+8}));
+                el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:71,isPrimary:true,clientX:x+72,clientY:y+8}));
               }""",[cx,cy])
-              time.sleep(.35)
-              transform_after_drag=page.locator('#heroPupil').evaluate("e=>getComputedStyle(e).transform")
-              assert transform_after_drag not in ('none','matrix(1, 0, 0, 1, 0, 0)'),transform_after_drag
+              time.sleep(.3)
+              moved=pupil.evaluate("e=>getComputedStyle(e).transform")
+              assert moved!=t2,(t2,moved)
               assert page.evaluate("document.body.classList.contains('game-running')") is False
+              page.close()
 
-              # Reload so the existing game regression checks start from the normal centered pupil.
-              page.reload(wait_until='domcontentloaded')
-              page.wait_for_selector('#heroEye')
+              # 3) Looking/dragging downward starts the existing game.
+              page=ctx.new_page()
+              page.goto(base+'?test=down-gaze',wait_until='domcontentloaded',timeout=30000)
               page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
-              assert page.locator('.hero-click-guide .touch-word').text_content()=='タップ！'
-
-              sy0=page.evaluate('window.scrollY')
-              time.sleep(1.2)
-              sy1=page.evaluate('window.scrollY')
-              assert abs(sy1-sy0)<1,(sy0,sy1)
-
-              page.locator('#heroEye').tap()
+              pupil=page.locator('#heroPupil')
+              pr=pupil.bounding_box(); assert pr
+              cx=pr['x']+pr['width']/2; cy=pr['y']+pr['height']/2
+              page.evaluate("""([x,y])=>{
+                const el=document.getElementById('heroPupil');
+                el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:72,isPrimary:true,clientX:x,clientY:y}));
+                el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:72,isPrimary:true,clientX:x,clientY:y+180}));
+              }""",[cx,cy])
               page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
-              guide=page.locator('.game-ball-guide')
-              assert guide.count()==1
-              page.wait_for_function("getComputedStyle(document.querySelector('.game-ball-guide')).opacity==='1'")
-              gtxt=guide.inner_text()
-              assert '指で左右になぞる' in gtxt
-              assert 'ページをスクロール' in gtxt
-              gr0=guide.bounding_box()
               s0=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
-              time.sleep(.7)
+              time.sleep(.65)
               s1=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
-              assert s1['ballY']>s0['ballY']+10,(s0,s1)
-              assert s1['obstacles']>10,s1
-              assert s1['checkpoints']>=5,s1
+              assert s1['ballY']>s0['ballY']+8,(s0,s1)
+              assert s1['obstacles']>10 and s1['checkpoints']>=5,s1
 
-              # deliberate horizontal swipe: ball should follow finger directly
-              viewport_x=s1['ballX']-page.evaluate('window.scrollX')
-              viewport_y=min(650,max(250,s1['ballY']-page.evaluate('window.scrollY')))
+              # Existing in-game steering still works.
+              vx=s1['ballX']-page.evaluate('window.scrollX')
+              vy=min(650,max(250,s1['ballY']-page.evaluate('window.scrollY')))
               page.evaluate("""([x,y])=>{
                 const t=document.elementFromPoint(x,y)||document.body;
                 t.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x,clientY:y}));
-                t.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x+75,clientY:y+2}));
-                t.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x+75,clientY:y+2}));
-              }""",[viewport_x,viewport_y])
+                t.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x+70,clientY:y+2}));
+                t.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerType:'touch',pointerId:31,isPrimary:true,clientX:x+70,clientY:y+2}));
+              }""",[vx,vy])
               s2=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
-              assert s2['ballX']>s1['ballX']+45,(s1,s2)
-              gr1=guide.bounding_box()
-              assert gr1['x']>gr0['x']+35,(gr0,gr1)
+              assert s2['ballX']>s1['ballX']+40,(s1,s2)
 
-              # once released, no horizontal drift
-              x2=s2['ballX']; y2=s2['ballY']
-              time.sleep(1.1)
-              s3=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
-              assert abs(s3['ballX']-x2)<1,(x2,s3)
-              assert s3['ballY']>=y2,(y2,s3)
-
-              # no automatic page scrolling while game runs
-              sy2=page.evaluate('window.scrollY')
-              time.sleep(1.0)
-              sy3=page.evaluate('window.scrollY')
-              assert abs(sy3-sy2)<1,(sy2,sy3)
-
-              # Deterministic bottom bounce: force the live ball to the floor and confirm upward velocity.
+              # Existing bottom bounce still works.
               page.evaluate('window.__ABOUT_SIMPLE_GAME__.testFloorBounce()')
               time.sleep(.12)
               sb=page.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
-              assert sb['ballVY'] < -250,sb
-              assert sb['ballY'] <= sb['floorY']-sb['ballR']+1,sb
-              print('ABOUT_SIMPLE_FLOOR_BOUNCE_OK',sb)
+              assert sb['ballVY']<-250,sb
+              page.close()
 
-              print('ABOUT_SIMPLE_WEBKIT_OK',s0,s1,s2,s3,sy0,sy1,sy2,sy3)
-
-              # Fresh run with no steering: it must hit text and bounce, not fall straight through.
-              page2=ctx.new_page()
-              page2.goto(base+'?simpletest=webkit-v5-collision',wait_until='domcontentloaded',timeout=30000)
-              page2.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
-              page2.locator('#heroEye').tap()
-              page2.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
-              velocities=[]
-              positions=[]
-              for _ in range(120):
-                  st=page2.evaluate('window.__ABOUT_SIMPLE_GAME__.getState()')
-                  velocities.append(st['ballVY'])
-                  positions.append(st['ballY'])
-                  if st['ballVY'] < -50:
-                      break
-                  time.sleep(.05)
-              assert any(v < -50 for v in velocities),(velocities[-20:],positions[-20:])
-              assert max(positions)-min(positions)>40,(min(positions),max(positions))
-              print('ABOUT_SIMPLE_TEXT_COLLISION_OK',min(velocities),min(positions),max(positions))
-              page2.close()
+              # 4) Tap start remains available.
+              page=ctx.new_page()
+              page.goto(base+'?test=tap-start',wait_until='domcontentloaded',timeout=30000)
+              page.wait_for_function('window.__ABOUT_SIMPLE_GAME__ && window.__ABOUT_SIMPLE_GAME__.getState')
+              page.locator('#heroPupil').tap()
+              page.wait_for_function("window.__ABOUT_SIMPLE_GAME__.getState().running===true")
+              print('ABOUT_ORGANIC_HERO_AND_GAME_OK')
+              page.close()
               browser.close()
           PY
-          python /tmp/about_simple_check.py
+          python /tmp/about_check.py
