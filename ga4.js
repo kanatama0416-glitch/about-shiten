@@ -1,5 +1,5 @@
 (function () {
-  const MEASUREMENT_ID = '';
+  const MEASUREMENT_ID = 'G-G8XYDEWSY4';
 
   if (!/^G-[A-Z0-9]+$/i.test(MEASUREMENT_ID)) return;
 
